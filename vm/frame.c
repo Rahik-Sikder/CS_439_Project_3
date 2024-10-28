@@ -40,7 +40,7 @@ void *try_alloc_frame (int page)
   for (i = 0; i < init_ram_pages; i++)
     {
       struct frame *f = &all_frames[i];
-      if (!lock_try_acquire (&f->frame_lock))
+      if (lock_held_by_current_thread (&f->frame_lock) || !lock_try_acquire(&f->frame_lock))
         continue;
       if (f->page == NULL)
         {
