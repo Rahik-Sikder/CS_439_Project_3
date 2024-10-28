@@ -46,7 +46,7 @@ void *try_alloc_frame (int page)
         {
           f->page = page;
           lock_release (&scan_lock);
-          return f;
+          return f->base_addr;
         }
       lock_release (&f->frame_lock);
     }

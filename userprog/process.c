@@ -473,7 +473,6 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Add the page to the process's address space. */
       if (!install_page (upage, kpage, writable))
         {
-          printf("LOAD SEGMENT");
           palloc_free_page (kpage);
           return false;
         }
