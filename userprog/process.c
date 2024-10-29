@@ -463,6 +463,10 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Get a page of memory. */
       struct sup_page_table_entry *new_page =  sup_page_table_insert(upage, writable);
 
+      new_page->file = file;
+      new_page->file_bytes = read_bytes;
+      new_page->file_offset = ofs;
+
       if(new_page==NULL){
         return NULL;
       }
