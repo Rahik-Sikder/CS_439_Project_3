@@ -15,18 +15,23 @@ enum page_loc
 
 struct sup_page_table_entry
 {
-  void *vaddr;                // Virtual address of the page
-  bool loaded;                // Is the page loaded into memory?
-  bool writable;              // Is the page writable?
-  bool swapped;               // Is the page swapped out?
-  bool dirty;                 // Is the page modified?
-  bool reference;             // Is the page modified?
-  enum page_loc location;     // page location
-  size_t swap_index;          // Index in the swap table if
+  void* vaddr;               // Virtual address of the page
+  bool loaded;               // Is the page loaded into memory?
+  bool writeable;            // Is the page writeable?
+  bool swapped;              // Is the page swapped out?
+  bool dirty;                // Is the page modified?
+  bool reference;            // Is the page modified?
+  enum page_loc location;    // page location
+  block_sector_t swap_index; // Index in the swap table if
+  struct frame* frame;
+  struct thread* owning_thread;
   struct hash_elem hash_elem; // Hash table element
 };
 
 hash_hash_func page_hash_func;
 hash_less_func page_less_func;
+
+struct sup_page_table_entry* sup_page_table_insert (void* vaddr,
+                                                    bool writeable);
 
 #endif /* vm/page.h */

@@ -6,6 +6,7 @@
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
+#include "threads/thread.h"
 #include "threads/vaddr.h"
 
 /* Shifts out PGBITS offset abd returns the address*/
@@ -20,7 +21,7 @@ unsigned int page_hash_func (const struct hash_elem *e, void *aux)
 /* Compares the value of two hash elements A and B, given
    auxiliary data AUX.  Returns true if A is less than B, or
    false if A is greater than or equal to B. */
-unsigned int page_less_func (const struct hash_elem *a,
+bool page_less_func (const struct hash_elem *a,
                              const struct hash_elem *b, void *aux)
 {
   struct sup_page_table_entry *entry_a =
@@ -29,4 +30,29 @@ unsigned int page_less_func (const struct hash_elem *a,
       hash_entry (b, struct sup_page_table_entry, hash_elem);
 
   return entry_a->vaddr < entry_b->vaddr;
+}
+
+struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
+{
+  struct thread *cur = thread_current ();
+  struct sup_page_table_entry *new_page =
+      malloc (sizeof (struct sup_page_table_entry));
+
+  new_page->vaddr = pg_round_down (vaddr);
+
+  new_page->frame = NULL;
+
+  new_page->writeable = writeable;
+
+  new_page->swap_index = (block_sector_t) -1;
+
+  new_page->owning_thread = cur;
+
+  if (hash_insert (cur->sup_page_table, &new_page->hash_elem) == NULL)
+    {
+      free (new_page);
+      return NULL;
+    }
+
+  return new_page;
 }

@@ -31,7 +31,7 @@ void frame_init (void)
     }
 }
 
-void *try_alloc_frame (int page)
+struct frame *try_alloc_frame (struct sup_page_table_entry* page)
 {
   int i;
 
