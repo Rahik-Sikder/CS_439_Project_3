@@ -93,14 +93,14 @@ struct thread
   int priority;              /* Priority. */
   struct list_elem allelem;  /* List element for all threads list. */
 
-  /* Used for Project 1*/
+  /* Used for Project 1 */
   int64_t target_ticks;        /* Tick at which thread wakes up */
   struct list_elem sleepelem;  /* List element for sleeping threads list. */
   struct semaphore sema_sleep; /* Semaphore that blocks and wakes sleeping */
   struct thread *road_block;
   struct list lock_waiters;
 
-  /* Used for Project 2*/
+  /* Used for Project 2 */
   int exit_status;
   struct list children;
   struct list_elem childelem;
@@ -110,6 +110,9 @@ struct thread
   struct list file_descriptors;
   struct file *executable_file;
   int curr_fd;
+
+  /* Used for Project 3 */
+  struct hash *sup_page_table;
 
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */

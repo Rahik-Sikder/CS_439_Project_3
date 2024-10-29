@@ -141,16 +141,19 @@ void process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-    if(thread_current()->executable_file){
-      file_allow_write(thread_current()->executable_file);
+  if (thread_current ()->executable_file)
+    {
+      file_allow_write (thread_current ()->executable_file);
     }
-    
-  while(!list_empty(&cur->file_descriptors)){
-    struct list_elem *e = list_pop_front (&cur->file_descriptors);
-    struct file_descriptor *desc = list_entry(e, struct file_descriptor, file_elem);
-    file_close(desc->open_file);
-    free(desc); 
-  }
+
+  while (!list_empty (&cur->file_descriptors))
+    {
+      struct list_elem *e = list_pop_front (&cur->file_descriptors);
+      struct file_descriptor *desc =
+          list_entry (e, struct file_descriptor, file_elem);
+      file_close (desc->open_file);
+      free (desc);
+    }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -167,9 +170,10 @@ void process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  if( lock_held_by_current_thread (&filesys_lock)){
-    lock_release(&filesys_lock);
-  }
+  if (lock_held_by_current_thread (&filesys_lock))
+    {
+      lock_release (&filesys_lock);
+    }
 }
 
 /* Sets up the CPU for running user code in the current
@@ -270,21 +274,21 @@ bool load (const char *file_name, void (**eip) (void), void **esp)
   int i;
   char *token;
   char *rest;
-  // printf ("filename passed to load: %s\n", file_name);
   token = strtok_r (file_name, " ", &rest);
-  // printf("filename after split: %s\n", file_name);
-  // printf("token after split: %s\n", token);
-  // printf("rest after split: %s\n", rest);
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
     goto done;
   process_activate ();
 
+  /* Initialize the suppplemental page table */
+  hash_init (t->sup_page_table, page_hash_func, page_less_func, NULL);
+
   /* Open executable file. */
-  lock_acquire(&filesys_lock);
+  lock_acquire (&filesys_lock);
   file = filesys_open (token);
-  lock_release(&filesys_lock);
+  lock_release (&filesys_lock);
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", token);
@@ -300,7 +304,6 @@ bool load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: error loading executable\n", token);
       goto done;
     }
-
 
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
@@ -458,7 +461,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
       /* Get a page of memory. */
-      uint8_t *kpage = try_alloc_frame(1);
+      uint8_t *kpage = try_alloc_frame (1);
       if (kpage == NULL)
         return false;
 
@@ -493,7 +496,7 @@ static bool setup_stack (void **esp, char *filename, char *args)
   uint8_t *kpage;
   bool success = false;
 
-  kpage = try_alloc_frame(1);
+  kpage = try_alloc_frame (1);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
