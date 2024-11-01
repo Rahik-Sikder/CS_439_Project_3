@@ -8,6 +8,9 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
+#include <string.h>
+#include "userprog/pagedir.h"
 
 /* Shifts out PGBITS offset abd returns the address*/
 unsigned int page_hash_func (const struct hash_elem *e, void *aux)
@@ -21,8 +24,8 @@ unsigned int page_hash_func (const struct hash_elem *e, void *aux)
 /* Compares the value of two hash elements A and B, given
    auxiliary data AUX.  Returns true if A is less than B, or
    false if A is greater than or equal to B. */
-bool page_less_func (const struct hash_elem *a,
-                             const struct hash_elem *b, void *aux)
+bool page_less_func (const struct hash_elem *a, const struct hash_elem *b,
+                     void *aux)
 {
   struct sup_page_table_entry *entry_a =
       hash_entry (a, struct sup_page_table_entry, hash_elem);
@@ -59,4 +62,83 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
     }
 
   return new_page;
+}
+
+static struct sup_page_table_entry *get_entry_addr (void *vaddr)
+{
+
+  // Check if page fault is in user space
+  if (vaddr >= PHYS_BASE)
+    return NULL;
+
+  struct sup_page_table_entry page;
+  struct hash_elem *elem;
+
+  page.vaddr = (void *) pg_round_down (vaddr);
+
+  // Page exists
+  if ((elem = hash_find (thread_current ()->sup_page_table, &page.hash_elem)) !=
+      NULL)
+    return hash_entry (elem, struct sup_page_table_entry, hash_elem);
+
+  //...Stack Growth
+
+  // Seg Fault
+  return NULL;
+}
+
+static bool populate_frame (struct sup_page_table_entry *page)
+{
+  page->frame = try_alloc_frame (page);
+  if (page->frame == NULL)
+    return false;
+
+  // Swapping...
+
+  if (page->file != NULL)
+    {
+      off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
+                                       page->file_bytes, page->file_offset);
+      off_t zero_bytes = PGSIZE - read_bytes;
+      memset ((char*)page->frame->base_addr + read_bytes, 0, zero_bytes);
+    }
+  else
+    {
+      memset (page->frame->base_addr, 0, PGSIZE);
+    }
+
+  return true;
+}
+
+bool handle_load (void *fault_addr)
+{
+
+  struct sup_page_table_entry *page;
+  bool status;
+
+  /* Not sure if needed */
+  if (thread_current ()->sup_page_table == NULL)
+    {
+      return false;
+    }
+
+  page = get_entry_addr (fault_addr);
+  if (page == NULL)
+    {
+      return false;
+    }
+
+  lock_acquire (&page->frame->frame_lock);
+  if (page->frame == NULL)
+    {
+
+      // Swap in or load from File
+      if (!populate_frame (page))
+        return false;
+    }
+
+  status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
+                             page->frame->base_addr, page->writeable);
+  lock_release(&page->frame->frame_lock);
+  return status;
 }
