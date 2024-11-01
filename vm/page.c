@@ -99,7 +99,7 @@ static bool populate_frame (struct sup_page_table_entry *page)
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
                                        page->file_bytes, page->file_offset);
       off_t zero_bytes = PGSIZE - read_bytes;
-      memset ((char*)page->frame->base_addr + read_bytes, 0, zero_bytes);
+      memset ((char *) page->frame->base_addr + read_bytes, 0, zero_bytes);
     }
   else
     {
@@ -111,22 +111,16 @@ static bool populate_frame (struct sup_page_table_entry *page)
 
 bool handle_load (void *fault_addr)
 {
-
   struct sup_page_table_entry *page;
   bool status;
 
   page = get_entry_addr (fault_addr);
   if (page == NULL)
-    {
-      return false;
-    }
+    return false;
 
-  if (page->frame == NULL)
-    {
-      // Swap in or load from File
-      if (!populate_frame (page))
-        return false;
-    }
+  // Swap in or load from File
+  if (page->frame == NULL && !populate_frame (page))
+    return false;
 
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
