@@ -46,7 +46,7 @@ struct frame *try_alloc_frame (struct sup_page_table_entry* page)
         {
           f->page = page;
           lock_release (&scan_lock);
-          return f->base_addr;
+          return f;
         }
       lock_release (&f->frame_lock);
     }

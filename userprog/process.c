@@ -283,7 +283,8 @@ bool load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Initialize the suppplemental page table */
-  hash_init (t->sup_page_table, page_hash_func, page_less_func, NULL);
+
+  hash_init (&t->sup_page_table, &page_hash_func, &page_less_func, NULL);
 
   /* Open executable file. */
   lock_acquire (&filesys_lock);
@@ -462,7 +463,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
       struct sup_page_table_entry *new_page =  sup_page_table_insert(upage, writable);
-
+      
       new_page->file = file;
       new_page->file_bytes = read_bytes;
       new_page->file_offset = ofs;
@@ -514,7 +515,6 @@ static bool setup_stack (void **esp, char *filename, char *args)
   argv[num_args] = sp;
   num_args++;
   memcpy (sp, filename, strlen (filename) + 1);
-
   for (token = strtok_r (args, " ", &rest); token != NULL;
        token = strtok_r (NULL, " ", &rest))
     {
