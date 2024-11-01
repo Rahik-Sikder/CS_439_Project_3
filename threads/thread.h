@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
+#include <hash.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -112,7 +113,7 @@ struct thread
   int curr_fd;
 
   /* Used for Project 3 */
-  struct hash *sup_page_table;
+  struct hash sup_page_table;
 
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */
