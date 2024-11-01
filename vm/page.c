@@ -55,7 +55,7 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
   new_page->file_offset = 0;
   new_page->file_bytes = 0;
 
-  if (hash_insert (&cur->page_table, &new_page->hash_elem) != NULL)
+  if (hash_insert (&cur->page_table, &new_page->hash_elem))
     {
       free (new_page);
       return NULL;
@@ -121,10 +121,8 @@ bool handle_load (void *fault_addr)
       return false;
     }
 
-  lock_acquire (&page->frame->frame_lock);
   if (page->frame == NULL)
     {
-
       // Swap in or load from File
       if (!populate_frame (page))
         return false;
@@ -132,6 +130,5 @@ bool handle_load (void *fault_addr)
 
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
-  lock_release(&page->frame->frame_lock);
   return status;
 }
