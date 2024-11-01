@@ -113,7 +113,7 @@ struct thread
   int curr_fd;
 
   /* Used for Project 3 */
-  struct hash sup_page_table;
+  struct hash page_table;
 
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */

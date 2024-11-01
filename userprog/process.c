@@ -284,7 +284,7 @@ bool load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Initialize the suppplemental page table */
 
-  hash_init (&t->sup_page_table, &page_hash_func, &page_less_func, NULL);
+  hash_init (&t->page_table, &page_hash_func, &page_less_func, NULL);
 
   /* Open executable file. */
   lock_acquire (&filesys_lock);
