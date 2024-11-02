@@ -20,7 +20,6 @@ struct sup_page_table_entry
   bool writeable;            // Is the page writeable?
   bool swapped;              // Is the page swapped out?
   bool dirty;                // Is the page modified?
-  bool reference;            // Is the page modified?
   enum page_loc location;    // page location
   block_sector_t swap_index; // Index in the swap table if
   struct frame* frame;
@@ -35,6 +34,7 @@ hash_hash_func page_hash_func;
 hash_less_func page_less_func;
 
 bool handle_load (void* fault_addr, uint8_t* user_esp, bool write);
+bool handle_out (struct sup_page_table_entry *page);
 struct sup_page_table_entry* sup_page_table_insert (void* vaddr,
                                                     bool writeable);
 

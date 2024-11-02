@@ -68,7 +68,6 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
 static struct sup_page_table_entry *get_entry_addr (void *vaddr,
                                                     uint8_t *user_esp)
 {
-
   // Check if page fault is in user space
   if (vaddr >= PHYS_BASE)
     return NULL;
@@ -142,4 +141,23 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
   return status;
+}
+
+bool handle_out (struct sup_page_table_entry *page){
+
+  // Remove page from pagedir
+  pagedir_clear_page(page->owning_thread->pagedir);
+
+  // Get dirty status
+  bool is_dirty = pagedir_is_dirty(page->owning_thread->pagedir, page->vaddr);
+
+  if(!is_dirty){
+    page->frame = NULL;
+    return true;
+  }
+
+  
+
+
+
 }
