@@ -65,7 +65,8 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
   return new_page;
 }
 
-static struct sup_page_table_entry *get_entry_addr (void *vaddr)
+static struct sup_page_table_entry *get_entry_addr (void *vaddr,
+                                                    uint8_t *user_esp)
 {
 
   // Check if page fault is in user space
@@ -80,19 +81,18 @@ static struct sup_page_table_entry *get_entry_addr (void *vaddr)
   // Page exists
   if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
-  printf("POTENTIAL STACK GROWTH\n");
-  printf("Pointer at %p\n", thread_current() ->stack + PGSIZE);
-  printf("Pointer at %p\n", thread_current() ->stack - PGSIZE);
-  printf("Vaddr at %p\n", (uint8_t *)vaddr);
 
-  // If vaddr is within max stack growth and a page distance from esp, allocate
-  if( (uint8_t *)vaddr > ( thread_current() ->stack - PGSIZE*20) ){
-    printf("INSIDE \n");
-    struct sup_page_table_entry *new_page =  sup_page_table_insert(page.vaddr, true);
-    struct frame* found_frame = try_alloc_frame(new_page);
-    install_page (new_page->vaddr, found_frame->base_addr, true);
-    return new_page;
-  }
+  // If vaddr is within max stack growth and a 32 bytes from esp, allocate
+  if ((uint8_t *) vaddr > (user_esp - 32))
+    {
+      struct sup_page_table_entry *new_page =
+          sup_page_table_insert (page.vaddr, true);
+      struct frame *found_frame = try_alloc_frame (new_page);
+      if (found_frame == NULL)
+        return NULL;
+
+      return new_page;
+    }
 
   // Seg Fault
   return NULL;
@@ -121,15 +121,18 @@ static bool populate_frame (struct sup_page_table_entry *page)
   return true;
 }
 
-bool handle_load (void *fault_addr)
+bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 {
   struct sup_page_table_entry *page;
   bool status;
-  if (fault_addr==NULL){
+  if (fault_addr == NULL)
     return false;
-  }
-  page = get_entry_addr (fault_addr);
+
+  page = get_entry_addr (fault_addr, user_esp);
   if (page == NULL)
+    return false;
+
+  if (write && !page->writeable)
     return false;
 
   // Swap in or load from File

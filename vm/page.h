@@ -26,7 +26,7 @@ struct sup_page_table_entry
   struct frame* frame;
   struct thread* owning_thread;
   struct hash_elem hash_elem; // Hash table element
-  struct file *file;          // File address 
+  struct file* file;          // File address
   off_t file_offset;          // Offset in file
   off_t file_bytes;           // Bytes to read/write, 1...PGSIZE.
 };
@@ -34,7 +34,7 @@ struct sup_page_table_entry
 hash_hash_func page_hash_func;
 hash_less_func page_less_func;
 
-bool handle_load(void *fault_addr);
+bool handle_load (void* fault_addr, uint8_t* user_esp, bool write);
 struct sup_page_table_entry* sup_page_table_insert (void* vaddr,
                                                     bool writeable);
 
