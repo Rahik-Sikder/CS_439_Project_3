@@ -12,6 +12,7 @@
 #include "vm/page.h"
 #include <string.h>
 #include "userprog/pagedir.h"
+#include "vm/swap.h"
 
 /* Shifts out PGBITS offset abd returns the address*/
 unsigned int page_hash_func (const struct hash_elem *e, void *aux)
@@ -105,6 +106,9 @@ static bool populate_frame (struct sup_page_table_entry *page)
 
   // Swapping...
 
+  if(page->swap_index!=-1){
+    swap_page_in(page);
+  }
   if (page->file != NULL)
     {
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
@@ -140,29 +144,38 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
+  page->location = LOC_MEMORY;
   return status;
 }
 
-bool handle_out (struct sup_page_table_entry *page){
+bool handle_out (struct sup_page_table_entry *page)
+{
+
+  ASSERT(page->location == LOC_MEMORY);
+
   bool success;
   // Remove page from pagedir
-  pagedir_clear_page(page->owning_thread->pagedir);
+  pagedir_clear_page (page->owning_thread->pagedir, page->vaddr);
 
   // Get dirty status
-  bool is_dirty = pagedir_is_dirty(page->owning_thread->pagedir, page->vaddr);
+  bool is_dirty = pagedir_is_dirty (page->owning_thread->pagedir, page->vaddr);
 
-  if(!is_dirty){
-    success = true;
-  }
-  
-  if(page->file==NULL||is_dirty){
-    success = swap_out(page);
-  }
+  if (!is_dirty)
+    {
+      success = true;
+    }
 
-  if (success){
-    page->frame = NULL;
-    return success;
-  }
+  if (page->file == NULL || is_dirty)
+    {
+      success = swap_page_out (page);
+    }
+
+  if (success)
+    {
+      page->frame = NULL;
+      page->location = LOC_FILE_SYS;
+      return success;
+    }
 
   return success;
 }
