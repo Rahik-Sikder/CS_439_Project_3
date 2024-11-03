@@ -82,8 +82,9 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
   if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
 
-  // If vaddr is within max stack growth and a 32 bytes from esp, allocate
-  if ((uint8_t *) vaddr > (user_esp - 64))
+
+  // If vaddr is within max stack growth and a 64 bytes from esp, allocate
+  if ((uint8_t *) vaddr >= (user_esp - 64))
     {
       struct sup_page_table_entry *new_page =
           sup_page_table_insert (page.vaddr, true);
