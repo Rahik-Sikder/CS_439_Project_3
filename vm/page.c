@@ -144,7 +144,7 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 }
 
 bool handle_out (struct sup_page_table_entry *page){
-
+  bool success;
   // Remove page from pagedir
   pagedir_clear_page(page->owning_thread->pagedir);
 
@@ -152,12 +152,17 @@ bool handle_out (struct sup_page_table_entry *page){
   bool is_dirty = pagedir_is_dirty(page->owning_thread->pagedir, page->vaddr);
 
   if(!is_dirty){
-    page->frame = NULL;
-    return true;
+    success = true;
+  }
+  
+  if(page->file==NULL||is_dirty){
+    success = swap_out(page);
   }
 
-  
+  if (success){
+    page->frame = NULL;
+    return success;
+  }
 
-
-
+  return success;
 }

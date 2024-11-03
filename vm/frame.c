@@ -8,6 +8,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "threads/thread.h"
 
 struct frame *all_frames;
 
@@ -58,7 +59,7 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
   // No frames avaliable, need to evict
   for (int i; i < init_ram_pages * 2; i++)
     {
-      struct frame *cur_frame = all_frames[hand];
+      struct frame *cur_frame = &all_frames[hand];
       hand++;
       hand %= init_ram_pages;
 
