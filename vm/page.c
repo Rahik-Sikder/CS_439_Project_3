@@ -66,7 +66,7 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
   return new_page;
 }
 
-static struct sup_page_table_entry *get_entry_addr (void *vaddr,
+struct sup_page_table_entry *get_entry_addr (void *vaddr,
                                                     uint8_t *user_esp)
 {
   // Check if page fault is in user space
@@ -83,7 +83,7 @@ static struct sup_page_table_entry *get_entry_addr (void *vaddr,
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
 
   // If vaddr is within max stack growth and a 32 bytes from esp, allocate
-  if ((uint8_t *) vaddr > (user_esp - 32))
+  if ((uint8_t *) vaddr > (user_esp - 64))
     {
       struct sup_page_table_entry *new_page =
           sup_page_table_insert (page.vaddr, true);
@@ -108,8 +108,7 @@ static bool populate_frame (struct sup_page_table_entry *page)
 
   if(page->swap_index!=-1){
     swap_page_in(page);
-  }
-  if (page->file != NULL)
+  } else if (page->file != NULL)
     {
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
                                        page->file_bytes, page->file_offset);
