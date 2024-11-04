@@ -250,7 +250,7 @@ void lock_acquire (struct lock *lock)
 
       lock->holder->priority = highest_priority;
       // Rahik driving while adding this line
-      nested_donation (highest_priority, lock->holder);
+      // nested_donation (highest_priority, lock->holder);
     }
   // Jake finished driving
   //Jake driving adding this line  
