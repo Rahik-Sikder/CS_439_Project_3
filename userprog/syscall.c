@@ -222,14 +222,16 @@ void syscall_handler (struct intr_frame *f)
         fd = *(sp++);
         buffer = (char *) *(sp++);
         size = (unsigned) *(sp++);
-        struct sup_page_table_entry* page = get_entry_addr(buffer,sp);
-        if (page==NULL|| !page->writeable || !validate_user_address (buffer) ||
+        
+
+        if (!validate_user_address (buffer) ||
             !is_user_vaddr (buffer + size - 1))
           return syscall_error (f);
 
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
-            if (!pagedir_get_page (thread_current ()->pagedir, buffer + i))
+            struct sup_page_table_entry* page = get_entry_addr(buffer + i,sp);
+            if (!pagedir_get_page (thread_current ()->pagedir, buffer + i) || page==NULL|| !page->writeable)
               {
                 return syscall_error (f);
               }
@@ -380,6 +382,7 @@ static struct file *get_file_from_fd (int fd)
 
   return NULL;
 }
+
 bool get_user_32bit (const void *src)
 {
   /* Check that all 4 bytes of the source address are in valid user memory */
