@@ -80,12 +80,14 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
 
   // Page exists
   if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
+    prinft("Page Exists");
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
 
 
   // If vaddr is within max stack growth and a 64 bytes from esp, allocate
   if ((uint8_t *) vaddr >= (user_esp - 64))
     {
+        printf("Stack growth");
       struct sup_page_table_entry *new_page =
           sup_page_table_insert (page.vaddr, true);
       struct frame *found_frame = try_alloc_frame (new_page);
@@ -96,6 +98,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
     }
 
   // Seg Fault
+  printf("Seg Fault");
   return NULL;
 }
 
@@ -107,7 +110,7 @@ static bool populate_frame (struct sup_page_table_entry *page)
 
   // Swapping...
 
-  if(page->swap_index!=-1){
+  if(page->swap_index!= -1){
     swap_page_in(page);
   } else if (page->file != NULL)
     {

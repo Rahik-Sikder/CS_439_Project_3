@@ -224,14 +224,15 @@ void syscall_handler (struct intr_frame *f)
         size = (unsigned) *(sp++);
         
 
-        if (!validate_user_address (buffer) ||
-            !is_user_vaddr (buffer + size - 1))
+        if ((!validate_user_address (buffer) ||
+            !is_user_vaddr (buffer + size - 1)) && !((uint8_t*)buffer >= (uint8_t*)f->esp-64))
+
           return syscall_error (f);
 
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
             struct sup_page_table_entry* page = get_entry_addr(buffer + i,sp);
-            if (!pagedir_get_page (thread_current ()->pagedir, buffer + i) || page==NULL|| !page->writeable)
+            if (!page->writeable)
               {
                 return syscall_error (f);
               }
