@@ -13,25 +13,26 @@
 struct frame *all_frames;
 
 static struct lock scan_lock;
+static size_t frame_cnt;
 
 static size_t hand;
 
 void frame_init (void)
 {
   void *addr;
+  void *base;
   lock_init (&scan_lock);
 
   all_frames = malloc (sizeof (struct frame) * init_ram_pages);
 
   if (all_frames == NULL)
     PANIC ("out of memory allocating page frames");
-
-  for (int i = 0; i < init_ram_pages; i++)
+      while ((base = palloc_get_page (PAL_USER)) != NULL) 
     {
-      struct frame *f = &all_frames[i];
+      struct frame *f = &all_frames[frame_cnt++];
       lock_init (&f->frame_lock);
+      f->base_addr = base;
       f->page = NULL;
-      f->base_addr = palloc_get_page (PAL_USER);
     }
 }
 
