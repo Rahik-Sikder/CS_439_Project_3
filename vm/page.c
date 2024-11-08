@@ -102,7 +102,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
   return NULL;
 }
 
-static bool populate_frame (struct sup_page_table_entry *page)
+bool populate_frame (struct sup_page_table_entry *page)
 {
   page->frame = try_alloc_frame (page);
   if (page->frame == NULL)
