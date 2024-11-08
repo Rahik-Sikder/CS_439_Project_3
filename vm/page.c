@@ -79,15 +79,15 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
   page.vaddr = (void *) pg_round_down (vaddr);
 
   // Page exists
-  if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
-    prinft("Page Exists");
+  if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem)){
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
+  }
 
 
   // If vaddr is within max stack growth and a 64 bytes from esp, allocate
   if ((uint8_t *) vaddr >= (user_esp - 64))
     {
-        printf("Stack growth");
+        // printf("Stack growth");
       struct sup_page_table_entry *new_page =
           sup_page_table_insert (page.vaddr, true);
       struct frame *found_frame = try_alloc_frame (new_page);

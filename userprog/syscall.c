@@ -8,6 +8,7 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 static void syscall_handler (struct intr_frame *);
 bool validate_user_address (const void *addr);
@@ -225,9 +226,11 @@ void syscall_handler (struct intr_frame *f)
         
 
         if ((!validate_user_address (buffer) ||
-            !is_user_vaddr (buffer + size - 1)) && !((uint8_t*)buffer >= (uint8_t*)f->esp-64))
+            !is_user_vaddr (buffer + size - 1)) && !((uint8_t*)buffer >= (uint8_t*)f->esp-64)){
+              printf("FAILED");
+              return syscall_error (f);
+            }
 
-          return syscall_error (f);
 
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
@@ -253,10 +256,21 @@ void syscall_handler (struct intr_frame *f)
               {
                 return syscall_fail_return (f);
               }
-
-            
-            int read_bytes = file_read (found_file, buffer, size);
-            
+            int read_bytes = 0;
+            int page_left = 0;
+            while(size > 0){
+              struct sup_page_table_entry *entry  = get_entry_addr(buffer, f->esp);
+              if(entry != NULL && entry->frame!=NULL){
+                lock_acquire(&entry->frame->frame_lock);
+              }
+              else{
+                syscall_error(f);
+              }
+              page_left = PGSIZE - pg_ofs(buffer + read_bytes);
+              read_bytes += file_read (found_file, buffer + read_bytes, (size < page_left) ? size : page_left);
+              size -= read_bytes;
+              lock_release(&entry->frame->frame_lock);
+            }
 
             if (read_bytes < 0)
               {
