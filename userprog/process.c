@@ -554,6 +554,9 @@ static bool setup_stack (void **esp, char *filename, char *args)
   // ASSERT ((uint32_t) sp <= (uint32_t) PHYS_BASE -  (uint32_t) PGSIZE);
 
   *esp = sp;
+
+  lock_release(&allocated_frame->frame_lock);
+  printf("works");
   return success;
 }
 

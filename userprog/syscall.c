@@ -8,6 +8,7 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 static void syscall_handler (struct intr_frame *);
 bool validate_user_address (const void *addr);
