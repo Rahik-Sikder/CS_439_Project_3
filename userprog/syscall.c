@@ -226,18 +226,19 @@ void syscall_handler (struct intr_frame *f)
         buffer = (char *) *(sp++);
         size = (unsigned) *(sp++);
 
-        if (!is_user_vaddr (buffer + size - 1) ||
-            (!validate_user_address (buffer) &&
-             !((uint8_t *) buffer >= (uint8_t *) f->esp - 64)))
+        
+        if (buffer== NULL || (!is_user_vaddr (buffer) || !is_user_vaddr (buffer + size - 1))){
           return syscall_error (f);
+        }
+          
 
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
-            struct sup_page_table_entry *page = get_entry_addr (buffer + i, sp);
-            if ((!pagedir_get_page (thread_current ()->pagedir, buffer + i) ||
-                 page == NULL || !page->writeable) &&
-                !((uint8_t *) buffer >= (uint8_t *) f->esp - 64))
-              return syscall_error (f);
+            struct sup_page_table_entry* page = get_entry_addr(buffer + i,f->esp);
+            if ((page == NULL || !page->writeable) && !((uint8_t *) buffer >= ((char*)f->esp - 64))) 
+              {
+                return syscall_error (f);
+              }
           }
         if (fd == 0)
           {
