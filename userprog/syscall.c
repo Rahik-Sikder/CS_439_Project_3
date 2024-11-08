@@ -275,12 +275,14 @@ void syscall_handler (struct intr_frame *f)
                                            entry->vaddr, entry->frame->base_addr,
                                            entry->writeable))
                       syscall_error (f);
-                  } 
-                lock_acquire(&entry->frame->frame_lock);
+                  }   
+
+                lock_acquire(&entry->frame->frame_lock); 
                 page_left = PGSIZE - pg_ofs (buffer + read_bytes);
                 read_bytes += file_read (found_file, buffer + read_bytes,
                                          (size < page_left) ? size : page_left);
                 size -= read_bytes;
+                
                 lock_release (&entry->frame->frame_lock);
               }
 
