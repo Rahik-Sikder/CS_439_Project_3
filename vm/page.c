@@ -17,7 +17,6 @@
 /* Shifts out PGBITS offset abd returns the address*/
 unsigned int page_hash_func (const struct hash_elem *e, void *aux)
 {
-
   struct sup_page_table_entry *page_entry =
       hash_entry (e, struct sup_page_table_entry, hash_elem);
   return ((uint16_t) page_entry->vaddr) >> PGBITS;
@@ -66,8 +65,7 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
   return new_page;
 }
 
-struct sup_page_table_entry *get_entry_addr (void *vaddr,
-                                                    uint8_t *user_esp)
+struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
 {
   // Check if page fault is in user space
   if (vaddr >= PHYS_BASE)
@@ -79,9 +77,8 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
   page.vaddr = (void *) pg_round_down (vaddr);
 
   // Page exists
-  if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
+  if ((elem = hash_find (&thread_current ()->page_table, &page.hash_elem)))
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
-
 
   // If vaddr is within max stack growth and a 64 bytes from esp, allocate
   if ((uint8_t *) vaddr >= (user_esp - 64))
@@ -107,9 +104,11 @@ static bool populate_frame (struct sup_page_table_entry *page)
 
   // Swapping...
 
-  if(page->swap_index!=-1){
-    swap_page_in(page);
-  } else if (page->file != NULL)
+  if (page->swap_index != (size_t) -1)
+    {
+      swap_page_in (page);
+    }
+  else if (page->file != NULL)
     {
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
                                        page->file_bytes, page->file_offset);
@@ -142,8 +141,10 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
   if (page->frame == NULL && !populate_frame (page))
     return false;
 
+
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
+
   page->location = LOC_MEMORY;
   return status;
 }
@@ -151,7 +152,7 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 bool handle_out (struct sup_page_table_entry *page)
 {
 
-  ASSERT(page->location == LOC_MEMORY);
+  ASSERT (page->location == LOC_MEMORY);
 
   bool success;
   // Remove page from pagedir

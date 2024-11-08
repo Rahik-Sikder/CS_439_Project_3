@@ -74,9 +74,10 @@ void syscall_handler (struct intr_frame *f)
         if (status < -1)
           status = -1;
         cur->exit_status = status; // Set exit status
-        if(cur->executable_file!=NULL){
-          file_allow_write(cur->executable_file);
-        }
+        if (cur->executable_file != NULL)
+          {
+            file_allow_write (cur->executable_file);
+          }
         thread_exit ();
         break;
 
@@ -109,7 +110,7 @@ void syscall_handler (struct intr_frame *f)
                 break;
               }
           }
-        if (t->exit_status == -1)
+        if (t == NULL || t->exit_status == -1)
           {
             f->eax = -1; // Loading failed, return error
             return;
@@ -166,13 +167,15 @@ void syscall_handler (struct intr_frame *f)
           syscall_error (f);
 
         lock_acquire (&filesys_lock);
-        if (filesys_remove (file)==NULL){
-          f->eax = false;
-        }
-        else{
-          f->eax = true;
-        }
-        lock_release (&filesys_lock);        
+        if (filesys_remove (file) == NULL)
+          {
+            f->eax = false;
+          }
+        else
+          {
+            f->eax = true;
+          }
+        lock_release (&filesys_lock);
         break;
 
       case SYS_OPEN: /* Open a file. */
@@ -222,46 +225,55 @@ void syscall_handler (struct intr_frame *f)
         fd = *(sp++);
         buffer = (char *) *(sp++);
         size = (unsigned) *(sp++);
-        
 
-        if (!is_user_vaddr (buffer + size - 1) || (!validate_user_address (buffer) && !((uint8_t*)buffer >= (uint8_t*)f->esp-64)))
+        if (!is_user_vaddr (buffer + size - 1) ||
+            (!validate_user_address (buffer) &&
+             !((uint8_t *) buffer >= (uint8_t *) f->esp - 64)))
           return syscall_error (f);
 
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
-            struct sup_page_table_entry* page = get_entry_addr(buffer + i,sp);
-            if ((!pagedir_get_page (thread_current ()->pagedir, buffer + i) || page==NULL|| !page->writeable) && !((uint8_t*)buffer >= (uint8_t*)f->esp-64))
-              {
-                return syscall_error (f);
-              }
+            struct sup_page_table_entry *page = get_entry_addr (buffer + i, sp);
+            if ((!pagedir_get_page (thread_current ()->pagedir, buffer + i) ||
+                 page == NULL || !page->writeable) &&
+                !((uint8_t *) buffer >= (uint8_t *) f->esp - 64))
+              return syscall_error (f);
           }
         if (fd == 0)
           {
             for (unsigned i = 0; i < size; i++)
-              {
-                buffer[i] = input_getc ();
-              }
+              buffer[i] = input_getc ();
+
             f->eax = size;
           }
         else
           {
             found_file = get_file_from_fd (fd);
-
             if (found_file == NULL)
+              return syscall_fail_return (f);
+
+            int total_read_bytes = 0;
+            int page_left = 0;
+
+            while (size > 0)
               {
-                return syscall_fail_return (f);
+                page_left = PGSIZE - pg_ofs (buffer + total_read_bytes);
+                // access to induce a page fault
+                if(!validate_user_address(buffer + total_read_bytes) && 
+                  !handle_load(buffer + total_read_bytes, f->esp, true)){
+                  syscall_error(f);
+                }
+                int read_bytes = file_read (found_file, buffer + total_read_bytes,
+                                         (size < page_left) ? size : page_left);
+                total_read_bytes += read_bytes;
+                size -= read_bytes;
               }
 
-            
-            int read_bytes = file_read (found_file, buffer, size);
-            
 
-            if (read_bytes < 0)
-              {
-                return syscall_fail_return (f);
-              }
-            
-            f->eax = read_bytes;
+            if (total_read_bytes < 0)
+              return syscall_fail_return (f);
+
+            f->eax = total_read_bytes;
           }
         break;
 
@@ -285,7 +297,7 @@ void syscall_handler (struct intr_frame *f)
             lock_acquire (&filesys_lock);
             putbuf (buffer, size);
             f->eax = size;
-            lock_release(&filesys_lock);
+            lock_release (&filesys_lock);
           }
         else
           {
@@ -294,13 +306,12 @@ void syscall_handler (struct intr_frame *f)
             if (file == NULL)
               return syscall_fail_return (f);
 
-            
             int bytes_written = file_write (file, buffer, size);
-            
 
-            if (bytes_written < 0){
-              return syscall_fail_return (f);
-            }
+            if (bytes_written < 0)
+              {
+                return syscall_fail_return (f);
+              }
 
             f->eax = bytes_written;
           }
@@ -347,7 +358,7 @@ void syscall_handler (struct intr_frame *f)
           }
         break;
       default:
-        syscall_fail_return (fd);
+        syscall_fail_return (f);
     }
   return;
 }
@@ -385,7 +396,7 @@ static struct file *get_file_from_fd (int fd)
 bool get_user_32bit (const void *src)
 {
   /* Check that all 4 bytes of the source address are in valid user memory */
-  for (int i = 0; i < sizeof (uint32_t); i++)
+  for (uint32_t i = 0; i < sizeof (uint32_t); i++)
     {
       if (!validate_user_address ((uint8_t *) src + i))
         {
