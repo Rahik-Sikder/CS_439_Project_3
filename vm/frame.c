@@ -37,7 +37,7 @@ void frame_init (void)
 
 struct frame *try_alloc_frame (struct sup_page_table_entry *page)
 {
-  int i;
+  uint32_t i;
 
   lock_acquire (&scan_lock);
 
@@ -57,7 +57,7 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
     }
 
   // No frames avaliable, need to evict
-  for (int i; i < init_ram_pages * 2; i++)
+  for (i = 0; i < init_ram_pages * 2; i++)
     {
       struct frame *cur_frame = &all_frames[hand];
       hand++;

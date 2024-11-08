@@ -52,7 +52,7 @@ bool swap_page_out (struct sup_page_table_entry *page)
   lock_release (&swap_lock);
 
   // Return false on failed bitmap scan
-  if (swap_index = BITMAP_ERROR)
+  if (swap_index == BITMAP_ERROR)
     {
       return false;
     }
