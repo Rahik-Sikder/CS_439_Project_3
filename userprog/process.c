@@ -18,6 +18,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/frame.h"
+#include "vm/page.h"
+#include "vm/swap.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -485,11 +487,13 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
         return NULL;
       }
       // Jake end driving
-
+      // Jake start driving
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+      ofs += PGSIZE;
+      // Jake end driving
     }
   return true;
 }
@@ -501,7 +505,6 @@ static bool setup_stack (void **esp, char *filename, char *args)
 
   uint8_t *kpage;
   bool success = false;
-  // Jake start driving
   struct sup_page_table_entry *new_page =  sup_page_table_insert(((uint8_t *) PHYS_BASE) - PGSIZE, true);
   if(new_page == NULL){
     return false;
@@ -515,7 +518,6 @@ static bool setup_stack (void **esp, char *filename, char *args)
         new_page->frame = allocated_frame;
         *esp = PHYS_BASE;
       }
-  // Jake end driving
       else
         palloc_free_page (kpage);
     }

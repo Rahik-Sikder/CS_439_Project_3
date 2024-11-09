@@ -141,13 +141,12 @@ static void page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  // Milan start driving
-  if (user && not_present)
+   // Jake start driving
+  if (user && not_present && handle_load (fault_addr))
     {
-      if (!handle_load (fault_addr))
-        thread_exit ();
+      return;
     }
-  // Milan end driving
+    // Jake end driving
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
