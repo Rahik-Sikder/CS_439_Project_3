@@ -290,9 +290,10 @@ bool load (const char *file_name, void (**eip) (void), void **esp)
   // Milan start driving
   /* Initialize the suppplemental page table */
   // Jake start driving
-  hash_init (&t->sup_page_table, &page_hash_func, &page_less_func, NULL);
-  // Jake end driving
 
+  hash_init (&t->page_table, &page_hash_func, &page_less_func, NULL);
+  // Jake end driving
+  
   /* Open executable file. */
   lock_acquire (&filesys_lock);
   file = filesys_open (token);

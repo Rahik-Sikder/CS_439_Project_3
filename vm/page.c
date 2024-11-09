@@ -61,7 +61,7 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
   // Rahik end driving
 
   // Jake start driving
-  if (hash_insert (&cur->sup_page_table, &new_page->hash_elem) != NULL)
+  if (hash_insert (&cur->page_table, &new_page->hash_elem) != NULL)
     {
       free (new_page);
       return NULL;
@@ -87,9 +87,11 @@ static struct sup_page_table_entry *get_entry_addr (void *vaddr)
   page.vaddr = (void *) pg_round_down (vaddr);
 
   // Page exists
-  if ((elem = hash_find (thread_current ()->sup_page_table, &page.hash_elem)) !=
-      NULL)
+  // Rahik start driving
+  if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
+  // Rahik end driving
+
 
   //...Stack Growth
 
@@ -125,12 +127,6 @@ bool handle_load (void *fault_addr)
 
   struct sup_page_table_entry *page;
   bool status;
-
-  /* Not sure if needed */
-  if (thread_current ()->sup_page_table == NULL)
-    {
-      return false;
-    }
 
   page = get_entry_addr (fault_addr);
   if (page == NULL)
