@@ -34,6 +34,7 @@ struct sup_page_table_entry
 hash_hash_func page_hash_func;
 hash_less_func page_less_func;
 
+bool handle_load(void *fault_addr);
 struct sup_page_table_entry* sup_page_table_insert (void* vaddr,
                                                     bool writeable);
 
