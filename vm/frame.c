@@ -9,9 +9,8 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "threads/thread.h"
-
 struct frame *all_frames;
-
+static size_t frame_cnt;
 static struct lock scan_lock;
 
 static size_t hand;
@@ -19,19 +18,19 @@ static size_t hand;
 void frame_init (void)
 {
   void *addr;
+  void *base;
   lock_init (&scan_lock);
 
   all_frames = malloc (sizeof (struct frame) * init_ram_pages);
 
   if (all_frames == NULL)
     PANIC ("out of memory allocating page frames");
-
-  for (int i = 0; i < init_ram_pages; i++)
+      while ((base = palloc_get_page (PAL_USER)) != NULL) 
     {
-      struct frame *f = &all_frames[i];
+      struct frame *f = &all_frames[frame_cnt++];
       lock_init (&f->frame_lock);
+      f->base_addr = base;
       f->page = NULL;
-      f->base_addr = palloc_get_page (PAL_USER);
     }
 }
 
@@ -64,7 +63,8 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
       hand %= init_ram_pages;
 
       // Check if frame is in use
-      if (!lock_try_acquire (&cur_frame->frame_lock))
+      if (lock_held_by_current_thread(&cur_frame->frame_lock) || 
+            !lock_try_acquire (&cur_frame->frame_lock))
         continue;
 
       // Check reference bit
@@ -93,3 +93,4 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
   lock_release (&scan_lock);
   return NULL;
 }
+

@@ -464,14 +464,16 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
       struct sup_page_table_entry *new_page =  sup_page_table_insert(upage, writable);
-      
-      new_page->file = file;
-      new_page->file_bytes = page_read_bytes;
-      new_page->file_offset = ofs;
-
       if(new_page==NULL){
-        return NULL;
+        return false;
       }
+      
+      if(page_read_bytes>0){
+        new_page->file = file;
+        new_page->file_bytes = page_read_bytes;
+        new_page->file_offset = ofs;
+      }
+
 
       /* Advance. */
       read_bytes -= page_read_bytes;
@@ -501,6 +503,7 @@ static bool setup_stack (void **esp, char *filename, char *args)
       if (success){
         new_page->frame = allocated_frame;
         *esp = PHYS_BASE;
+        new_page->location = LOC_MEMORY;
       }
       else
         palloc_free_page (kpage);
@@ -509,7 +512,6 @@ static bool setup_stack (void **esp, char *filename, char *args)
   char *rest;
 
   char *sp = *esp;
-  // printf("new SP: \t%p\n", sp);
   uint32_t num_args = 0;
   char *argv[128];
 
@@ -556,7 +558,7 @@ static bool setup_stack (void **esp, char *filename, char *args)
   *esp = sp;
 
   lock_release(&allocated_frame->frame_lock);
-  printf("works");
+
   return success;
 }
 
