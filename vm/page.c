@@ -74,8 +74,8 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
 
 // Jake end driving
 // Milan start driving
-
-static struct sup_page_table_entry *get_entry_addr (void *vaddr)
+static struct sup_page_table_entry *get_entry_addr (void *vaddr,
+                                                    uint8_t *user_esp)
 {
 
   // Check if page fault is in user space
@@ -93,19 +93,20 @@ static struct sup_page_table_entry *get_entry_addr (void *vaddr)
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
   // Rahik end driving
   // Rahik start driving  
-  printf("POTENTIAL STACK GROWTH\n");
-  printf("Pointer at %p\n", thread_current() ->stack + PGSIZE);
-  printf("Pointer at %p\n", thread_current() ->stack - PGSIZE);
-  printf("Vaddr at %p\n", (uint8_t *)vaddr);
+  // Milan start driving
 
-  // If vaddr is within max stack growth and a page distance from esp, allocate
-  if( (uint8_t *)vaddr > ( thread_current() ->stack - PGSIZE*20) ){
-    printf("INSIDE \n");
-    struct sup_page_table_entry *new_page =  sup_page_table_insert(page.vaddr, true);
-    struct frame* found_frame = try_alloc_frame(new_page);
-    install_page (new_page->vaddr, found_frame->base_addr, true);
-    return new_page;
-  }
+  // If vaddr is within max stack growth and a 32 bytes from esp, allocate
+  if ((uint8_t *) vaddr > (user_esp - 32))
+    {
+      struct sup_page_table_entry *new_page =
+          sup_page_table_insert (page.vaddr, true);
+      struct frame *found_frame = try_alloc_frame (new_page);
+      if (found_frame == NULL)
+        return NULL;
+
+      return new_page;
+    }
+  // Milan end driving
   // Rahik end driving
 
   // Seg Fault
@@ -137,20 +138,25 @@ static bool populate_frame (struct sup_page_table_entry *page)
   return true;
 }
 
-bool handle_load (void *fault_addr)
+bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 {
   struct sup_page_table_entry *page;
   bool status;
   // Jake start driving
   // Rahik start driving
-  if (fault_addr==NULL){
+  if (fault_addr == NULL)
     return false;
-  }
+
   // Rahik end driving
-  page = get_entry_addr (fault_addr);
+  // Milan start driving
+  page = get_entry_addr (fault_addr, user_esp);
   if (page == NULL)
     return false;
 
+  if (write && !page->writeable)
+    return false;
+  // Milan end driving
+  
   // Swap in or load from File
   if (page->frame == NULL && !populate_frame (page))
     return false;

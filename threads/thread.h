@@ -114,6 +114,7 @@ struct thread
 
   /* Used for Project 3 */
   struct hash page_table;
+  uint8_t *user_esp;
 
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */
