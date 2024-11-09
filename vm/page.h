@@ -26,6 +26,7 @@ struct sup_page_table_entry
   struct hash_elem hash_elem; // Hash table element
 };
 
-extern struct hash *sup_page_table;
+hash_hash_func page_hash_func;
+hash_less_func page_less_func;
 
 #endif /* vm/page.h */
