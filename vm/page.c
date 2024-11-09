@@ -8,6 +8,7 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/process.h"
 #include "vm/page.h"
 #include <string.h>
 #include "userprog/pagedir.h"
@@ -91,9 +92,21 @@ static struct sup_page_table_entry *get_entry_addr (void *vaddr)
   if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
   // Rahik end driving
+  // Rahik start driving  
+  printf("POTENTIAL STACK GROWTH\n");
+  printf("Pointer at %p\n", thread_current() ->stack + PGSIZE);
+  printf("Pointer at %p\n", thread_current() ->stack - PGSIZE);
+  printf("Vaddr at %p\n", (uint8_t *)vaddr);
 
-
-  //...Stack Growth
+  // If vaddr is within max stack growth and a page distance from esp, allocate
+  if( (uint8_t *)vaddr > ( thread_current() ->stack - PGSIZE*20) ){
+    printf("INSIDE \n");
+    struct sup_page_table_entry *new_page =  sup_page_table_insert(page.vaddr, true);
+    struct frame* found_frame = try_alloc_frame(new_page);
+    install_page (new_page->vaddr, found_frame->base_addr, true);
+    return new_page;
+  }
+  // Rahik end driving
 
   // Seg Fault
   return NULL;
@@ -129,6 +142,11 @@ bool handle_load (void *fault_addr)
   struct sup_page_table_entry *page;
   bool status;
   // Jake start driving
+  // Rahik start driving
+  if (fault_addr==NULL){
+    return false;
+  }
+  // Rahik end driving
   page = get_entry_addr (fault_addr);
   if (page == NULL)
     return false;

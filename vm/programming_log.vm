@@ -23,3 +23,5 @@ Rahik       11/1            New lock error + fixed log
 Milan       11/1            not reading 10k bytes
 
 Jake        11/1            incr ofs in load segment
+
+Rahik       11/1            stack growth attumpted
