@@ -289,7 +289,9 @@ bool load (const char *file_name, void (**eip) (void), void **esp)
 
   // Milan start driving
   /* Initialize the suppplemental page table */
-  hash_init (t->sup_page_table, page_hash_func, page_less_func, NULL);
+  // Jake start driving
+  hash_init (&t->sup_page_table, &page_hash_func, &page_less_func, NULL);
+  // Jake end driving
 
   /* Open executable file. */
   lock_acquire (&filesys_lock);
@@ -526,7 +528,6 @@ static bool setup_stack (void **esp, char *filename, char *args)
   argv[num_args] = sp;
   num_args++;
   memcpy (sp, filename, strlen (filename) + 1);
-
   for (token = strtok_r (args, " ", &rest); token != NULL;
        token = strtok_r (NULL, " ", &rest))
     {
