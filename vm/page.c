@@ -52,6 +52,12 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
 
   new_page->owning_thread = cur;
 
+  // Rahik start driving
+  new_page->file = NULL;
+  new_page->file_offset = 0;
+  new_page->file_bytes = 0;
+  // Rahik end driving
+
   if (hash_insert (cur->sup_page_table, &new_page->hash_elem) == NULL)
     {
       free (new_page);

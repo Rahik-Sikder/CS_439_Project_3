@@ -26,6 +26,9 @@ struct sup_page_table_entry
   struct frame* frame;
   struct thread* owning_thread;
   struct hash_elem hash_elem; // Hash table element
+  struct file *file;          // File address 
+  off_t file_offset;          // Offset in file
+  off_t file_bytes;           // Bytes to read/write, 1...PGSIZE.
 };
 
 hash_hash_func page_hash_func;
