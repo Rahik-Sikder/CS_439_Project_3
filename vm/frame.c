@@ -9,9 +9,8 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "threads/thread.h"
-
 struct frame *all_frames;
-
+static size_t frame_cnt;
 static struct lock scan_lock;
 static size_t frame_cnt;
 
@@ -65,7 +64,8 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
       hand %= init_ram_pages;
 
       // Check if frame is in use
-      if (!lock_try_acquire (&cur_frame->frame_lock))
+      if (lock_held_by_current_thread(&cur_frame->frame_lock) || 
+            !lock_try_acquire (&cur_frame->frame_lock))
         continue;
 
       // Check reference bit
@@ -94,3 +94,4 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
   lock_release (&scan_lock);
   return NULL;
 }
+

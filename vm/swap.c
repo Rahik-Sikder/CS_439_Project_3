@@ -39,13 +39,12 @@ bool swap_page_in (struct sup_page_table_entry *page)
   bitmap_reset (swap_bitmap, page->swap_index);
   page->swap_index = -1;
   page->location = LOC_MEMORY;
+
   return true;
 }
 
 bool swap_page_out (struct sup_page_table_entry *page)
 {
-
-  ASSERT (page->location == LOC_MEMORY);
 
   lock_acquire (&swap_lock);
   size_t swap_index = bitmap_scan_and_flip (swap_bitmap, 0, 1, false);
@@ -66,5 +65,9 @@ bool swap_page_out (struct sup_page_table_entry *page)
                    (char *) page->frame->base_addr + i * BLOCK_SECTOR_SIZE);
     }
   page->location = LOC_SWAP;
+  page->file_bytes = 0;
+  page->file = NULL;
+  page->file_offset = 0;
+
   return true;
 }
