@@ -491,8 +491,9 @@ static bool setup_stack (void **esp, char *filename, char *args)
 
   uint8_t *kpage;
   bool success = false;
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  // Jake start driving
+  kpage = try_alloc_frame();
+  // Jake end driving
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
