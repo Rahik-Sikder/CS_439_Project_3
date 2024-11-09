@@ -7,10 +7,13 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 
 struct frame *all_frames;
 
 static struct lock scan_lock;
+
+static size_t hand;
 
 // Milan start driving
 // Jake start driving
@@ -34,7 +37,7 @@ void frame_init (void)
     }
 }
 
-struct frame *try_alloc_frame (struct sup_page_table_entry* page)
+struct frame *try_alloc_frame (struct sup_page_table_entry *page)
 {
   int i;
 
@@ -44,7 +47,8 @@ struct frame *try_alloc_frame (struct sup_page_table_entry* page)
   for (i = 0; i < init_ram_pages; i++)
     {
       struct frame *f = &all_frames[i];
-      if (lock_held_by_current_thread (&f->frame_lock) || !lock_try_acquire(&f->frame_lock))
+      if (lock_held_by_current_thread (&f->frame_lock) ||
+          !lock_try_acquire (&f->frame_lock))
         continue;
       if (f->page == NULL)
         {
@@ -56,6 +60,44 @@ struct frame *try_alloc_frame (struct sup_page_table_entry* page)
         }
       lock_release (&f->frame_lock);
     }
+
+  // Jake start driving
+
+  // No frames avaliable, need to evict
+  for (int i; i < init_ram_pages * 2; i++)
+    {
+      struct frame *cur_frame = all_frames[hand];
+      hand++;
+      hand %= init_ram_pages;
+
+      // Check if frame is in use
+      if (!lock_try_acquire (&cur_frame->frame_lock))
+        continue;
+
+      // Check reference bit
+      if (pagedir_is_accessed (cur_frame->page->owning_thread->pagedir,
+                               cur_frame->page->vaddr))
+        {
+          pagedir_set_accessed (cur_frame->page->owning_thread->pagedir,
+                                cur_frame->page->vaddr, false);
+          lock_release (&cur_frame->frame_lock);
+          continue;
+        }
+
+      lock_release (&scan_lock);
+
+      // Start eviction
+      if (!handle_out (cur_frame->page))
+        {
+          lock_release (&cur_frame->frame_lock);
+          return NULL;
+        }
+
+      cur_frame->page = page;
+      return cur_frame;
+    }
+  // Jake end driving
+
   lock_release (&scan_lock);
   // Rahik end driving
 
