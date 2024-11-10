@@ -12,7 +12,6 @@
 struct frame *all_frames;
 static size_t frame_cnt;
 static struct lock scan_lock;
-static size_t frame_cnt;
 
 static size_t hand;
 
@@ -41,7 +40,7 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
 
   lock_acquire (&scan_lock);
 
-  for (i = 0; i < init_ram_pages; i++)
+  for (i = 0; i < frame_cnt; i++)
     {
       struct frame *f = &all_frames[i];
       if (lock_held_by_current_thread (&f->frame_lock) ||
@@ -57,11 +56,11 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
     }
   // printf ("Not enough frames, starting eviction\n");
   // No frames avaliable, need to evict
-  for (i = 0; i < init_ram_pages * 2; i++)
+  for (i = 0; i < frame_cnt * 2; i++)
     {
       struct frame *cur_frame = &all_frames[hand];
       hand++;
-      hand %= init_ram_pages;
+      hand %= frame_cnt;
 
       // Check if frame is in use
       if (lock_held_by_current_thread (&cur_frame->frame_lock) ||

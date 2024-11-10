@@ -19,7 +19,7 @@ unsigned int page_hash_func (const struct hash_elem *e, void *aux)
 {
   struct sup_page_table_entry *page_entry =
       hash_entry (e, struct sup_page_table_entry, hash_elem);
-  return ((uint16_t) page_entry->vaddr) >> PGBITS;
+  return ((uintptr_t) page_entry->vaddr) >> PGBITS;
 }
 
 /* Compares the value of two hash elements A and B, given
@@ -175,15 +175,6 @@ bool handle_out (struct sup_page_table_entry *page)
   // Get dirty status
   bool is_dirty = pagedir_is_dirty (page->owning_thread->pagedir, page->vaddr);
 
-  // Clean page and exists in file, no need to swap
-  if (!is_dirty && page->file != NULL)
-    {
-      page->location = LOC_FILE_SYS;
-      page->frame->page = NULL;
-      page->frame = NULL;
-      // printf("clean page and file exists, so evicting\n");
-      return true;
-    }
 
   // Swap out page
   bool success = swap_page_out (page);
