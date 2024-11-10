@@ -74,9 +74,10 @@ void syscall_handler (struct intr_frame *f)
         if (status < -1)
           status = -1;
         cur->exit_status = status; // Set exit status
-        if(cur->executable_file!=NULL){
-          file_allow_write(cur->executable_file);
-        }
+        if (cur->executable_file != NULL)
+          {
+            file_allow_write (cur->executable_file);
+          }
         thread_exit ();
         break;
 
@@ -166,13 +167,15 @@ void syscall_handler (struct intr_frame *f)
           syscall_error (f);
 
         lock_acquire (&filesys_lock);
-        if (filesys_remove (file)==NULL){
-          f->eax = false;
-        }
-        else{
-          f->eax = true;
-        }
-        lock_release (&filesys_lock);        
+        if (filesys_remove (file) == NULL)
+          {
+            f->eax = false;
+          }
+        else
+          {
+            f->eax = true;
+          }
+        lock_release (&filesys_lock);
         break;
 
       case SYS_OPEN: /* Open a file. */
@@ -224,21 +227,25 @@ void syscall_handler (struct intr_frame *f)
         size = (unsigned) *(sp++);
         // Rahik start driving
         // Jake start driving
-        
 
-        if (!validate_user_address (buffer) ||
-            !is_user_vaddr (buffer + size - 1))
+        // Rahik start driving
+        if (!is_user_vaddr (buffer + size - 1) ||
+            (!validate_user_address (buffer) &&
+             !((uint8_t *) buffer >= (uint8_t *) f->esp - 64)))
           return syscall_error (f);
         // Rahik end driving
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
-            struct sup_page_table_entry* page = get_entry_addr(buffer + i,sp);
-            if (!pagedir_get_page (thread_current ()->pagedir, buffer + i) || page==NULL|| !page->writeable)
+            struct sup_page_table_entry *page = get_entry_addr (buffer + i, sp);
+            if ((!pagedir_get_page (thread_current ()->pagedir, buffer + i) ||
+                 page == NULL || !page->writeable) &&
+                !((uint8_t *) buffer >= (uint8_t *) f->esp - 64))
               {
                 return syscall_error (f);
               }
           }
-          // Jake end driving
+        // Rahik end driving
+        // Jake end driving
         if (fd == 0)
           {
             for (unsigned i = 0; i < size; i++)
@@ -256,15 +263,13 @@ void syscall_handler (struct intr_frame *f)
                 return syscall_fail_return (f);
               }
 
-            
             int read_bytes = file_read (found_file, buffer, size);
-            
 
             if (read_bytes < 0)
               {
                 return syscall_fail_return (f);
               }
-            
+
             f->eax = read_bytes;
           }
         break;
@@ -289,7 +294,7 @@ void syscall_handler (struct intr_frame *f)
             lock_acquire (&filesys_lock);
             putbuf (buffer, size);
             f->eax = size;
-            lock_release(&filesys_lock);
+            lock_release (&filesys_lock);
           }
         else
           {
@@ -298,13 +303,12 @@ void syscall_handler (struct intr_frame *f)
             if (file == NULL)
               return syscall_fail_return (f);
 
-            
             int bytes_written = file_write (file, buffer, size);
-            
 
-            if (bytes_written < 0){
-              return syscall_fail_return (f);
-            }
+            if (bytes_written < 0)
+              {
+                return syscall_fail_return (f);
+              }
 
             f->eax = bytes_written;
           }
