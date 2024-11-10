@@ -110,11 +110,14 @@ void syscall_handler (struct intr_frame *f)
                 break;
               }
           }
-        if (t->exit_status == -1)
+        // Milan start driving
+        if (t == NULL || t->exit_status == -1)
           {
             f->eax = -1; // Loading failed, return error
             return;
           }
+        // Milan end driving
+
         f->eax = result;
         break;
 
@@ -258,19 +261,33 @@ void syscall_handler (struct intr_frame *f)
           {
             found_file = get_file_from_fd (fd);
 
+            // Milan start driving
             if (found_file == NULL)
+              return syscall_fail_return (f);
+
+            int total_read_bytes = 0;
+            int page_left = 0;
+
+            while (size > 0)
               {
-                return syscall_fail_return (f);
+                page_left = PGSIZE - pg_ofs (buffer + total_read_bytes);
+                // access to induce a page fault
+                if(!validate_user_address(buffer + total_read_bytes) && 
+                  !handle_load(buffer + total_read_bytes, f->esp, true)){
+                  syscall_error(f);
+                }
+                int read_bytes = file_read (found_file, buffer + total_read_bytes,
+                                         (size < page_left) ? size : page_left);
+                total_read_bytes += read_bytes;
+                size -= read_bytes;
               }
 
-            int read_bytes = file_read (found_file, buffer, size);
 
-            if (read_bytes < 0)
-              {
-                return syscall_fail_return (f);
-              }
+            if (total_read_bytes < 0)
+              return syscall_fail_return (f);
 
-            f->eax = read_bytes;
+            f->eax = total_read_bytes;
+            // Milan end driving
           }
         break;
 
@@ -355,7 +372,10 @@ void syscall_handler (struct intr_frame *f)
           }
         break;
       default:
-        syscall_fail_return (fd);
+        // Milan start driving
+        syscall_fail_return (f);
+        // Milan end driving
+
     }
   return;
 }
@@ -393,7 +413,7 @@ static struct file *get_file_from_fd (int fd)
 bool get_user_32bit (const void *src)
 {
   /* Check that all 4 bytes of the source address are in valid user memory */
-  for (int i = 0; i < sizeof (uint32_t); i++)
+  for (uint32_t i = 0; i < sizeof (uint32_t); i++)
     {
       if (!validate_user_address ((uint8_t *) src + i))
         {

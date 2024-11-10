@@ -18,7 +18,6 @@
 /* Shifts out PGBITS offset abd returns the address*/
 unsigned int page_hash_func (const struct hash_elem *e, void *aux)
 {
-
   struct sup_page_table_entry *page_entry =
       hash_entry (e, struct sup_page_table_entry, hash_elem);
   return ((uint16_t) page_entry->vaddr) >> PGBITS;
@@ -56,7 +55,6 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
 
   new_page->owning_thread = cur;
 
-  // Rahik start driving
   new_page->file = NULL;
   new_page->file_offset = 0;
   new_page->file_bytes = 0;
@@ -75,8 +73,7 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
 
 // Jake end driving
 // Milan start driving
-struct sup_page_table_entry *get_entry_addr (void *vaddr,
-                                                    uint8_t *user_esp)
+struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
 {
   // Check if page fault is in user space
   if (vaddr >= PHYS_BASE)
@@ -89,7 +86,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
 
   // Page exists
   // Rahik start driving
-  if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
+  if ((elem = hash_find (&thread_current ()->page_table, &page.hash_elem)))
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
   // Rahik end driving
   
@@ -125,10 +122,12 @@ static bool populate_frame (struct sup_page_table_entry *page)
   // Swapping...
 
   // Rahik start driving
-  if(page->swap_index!=-1){
-    swap_page_in(page);
-    // Milan end driving
-  } else if (page->file != NULL)
+  if (page->swap_index != (size_t) -1)
+    {
+      swap_page_in (page);
+      // Milan end driving
+    }
+  else if (page->file != NULL)
     {
   // Rahik end driving
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
@@ -171,6 +170,7 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 // Jake end driving
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
+
   page->location = LOC_MEMORY;
   return status;
 }
@@ -180,9 +180,10 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 
 bool handle_out (struct sup_page_table_entry *page)
 {
+
   // Rahik start driving
   // Milan start driving
-  ASSERT(page->location == LOC_MEMORY);
+  ASSERT (page->location == LOC_MEMORY);
 
   bool success;
   // Remove page from pagedir
