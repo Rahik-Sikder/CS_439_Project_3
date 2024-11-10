@@ -37,5 +37,7 @@ bool handle_load (void* fault_addr, uint8_t* user_esp, bool write);
 bool handle_out (struct sup_page_table_entry *page);
 struct sup_page_table_entry* sup_page_table_insert (void* vaddr,
                                                     bool writeable);
+struct sup_page_table_entry *get_entry_addr (void *vaddr,
+                                                    uint8_t *user_esp);                                                    
 
 #endif /* vm/page.h */
