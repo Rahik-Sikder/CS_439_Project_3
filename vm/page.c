@@ -97,7 +97,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr,
   // Milan start driving
   // Jake start driving
   // If vaddr is within max stack growth and a 64 bytes from esp, allocate
-  if ((uint8_t *) vaddr > (user_esp - 64))
+  if ((uint8_t *) vaddr >= (user_esp - 64))
     {
       struct sup_page_table_entry *new_page =
           sup_page_table_insert (page.vaddr, true);
