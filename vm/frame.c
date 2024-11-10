@@ -26,7 +26,7 @@ void frame_init (void)
 
   if (all_frames == NULL)
     PANIC ("out of memory allocating page frames");
-      while ((base = palloc_get_page (PAL_USER)) != NULL) 
+  while ((base = palloc_get_page (PAL_USER)) != NULL)
     {
       struct frame *f = &all_frames[frame_cnt++];
       lock_init (&f->frame_lock);
@@ -55,7 +55,7 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
         }
       lock_release (&f->frame_lock);
     }
-
+  // printf ("Not enough frames, starting eviction\n");
   // No frames avaliable, need to evict
   for (i = 0; i < init_ram_pages * 2; i++)
     {
@@ -64,8 +64,8 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
       hand %= init_ram_pages;
 
       // Check if frame is in use
-      if (lock_held_by_current_thread(&cur_frame->frame_lock) || 
-            !lock_try_acquire (&cur_frame->frame_lock))
+      if (lock_held_by_current_thread (&cur_frame->frame_lock) ||
+          !lock_try_acquire (&cur_frame->frame_lock))
         continue;
 
       // Check reference bit
@@ -79,7 +79,7 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
         }
 
       lock_release (&scan_lock);
-
+      // printf ("evicting frame %p\n", cur_frame->base_addr);
       // Start eviction
       if (!handle_out (cur_frame->page))
         {
@@ -94,4 +94,3 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
   lock_release (&scan_lock);
   return NULL;
 }
-

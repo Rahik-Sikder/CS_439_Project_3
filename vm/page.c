@@ -42,8 +42,9 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
   struct sup_page_table_entry *new_page =
       malloc (sizeof (struct sup_page_table_entry));
 
-  if(new_page!=NULL){
-      new_page->vaddr = pg_round_down (vaddr);
+  if (new_page != NULL)
+    {
+      new_page->vaddr = (void *) pg_round_down (vaddr);
 
       new_page->frame = NULL;
 
@@ -62,7 +63,7 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
           free (new_page);
           return NULL;
         }
-  }
+    }
 
   return new_page;
 }
@@ -79,9 +80,10 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
   page.vaddr = (void *) pg_round_down (vaddr);
 
   // Page exists
-  if ((elem = hash_find (&thread_current ()->page_table, &page.hash_elem))){
-    return hash_entry (elem, struct sup_page_table_entry, hash_elem);
-  }
+  if ((elem = hash_find (&thread_current ()->page_table, &page.hash_elem)))
+    {
+      return hash_entry (elem, struct sup_page_table_entry, hash_elem);
+    }
 
   // If vaddr is within max stack growth and a 64 bytes from esp, allocate
   if ((uint8_t *) vaddr >= (user_esp - 64))
@@ -92,6 +94,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
       if (found_frame == NULL)
         return NULL;
 
+      new_page->dirty = true;
       return new_page;
     }
 
@@ -102,18 +105,18 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
 bool populate_frame (struct sup_page_table_entry *page)
 {
   page->frame = try_alloc_frame (page);
-  if (page->frame == NULL){
-    return false;
-  }
-
+  if (page->frame == NULL)
+    {
+      return false;
+    }
 
   // Swapping...
 
-  if (page->swap_index != (size_t) -1)
+  if (page->location == LOC_SWAP)
     {
       swap_page_in (page);
     }
-  else if (page->file != NULL)
+  else if (page->location == LOC_FILE_SYS && page->file != NULL)
     {
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
                                        page->file_bytes, page->file_offset);
@@ -124,7 +127,7 @@ bool populate_frame (struct sup_page_table_entry *page)
     {
       memset (page->frame->base_addr, 0, PGSIZE);
     }
-    lock_release(&page->frame->frame_lock);
+  lock_release (&page->frame->frame_lock);
   return true;
 }
 
@@ -132,26 +135,25 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 {
   struct sup_page_table_entry *page;
   bool status;
-  if (fault_addr == NULL){
-    return false;
-  }
+  if (fault_addr == NULL)
+    {
+      return false;
+    }
 
   page = get_entry_addr (fault_addr, user_esp);
-  if (page == NULL){
-    return false;
-  }
+  if (page == NULL)
+    {
+      return false;
+    }
 
   if (write && !page->writeable)
     return false;
 
   // Swap in or load from File
-  if (page->frame == NULL){
-    bool succcess = populate_frame (page);
-    if(!succcess){
+  if (page->frame == NULL && !populate_frame (page))
+    {
       return false;
     }
-  }
-
 
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
@@ -167,27 +169,33 @@ bool handle_out (struct sup_page_table_entry *page)
   // printf("page location: %d", page->location);
   ASSERT (page->frame != NULL);
 
-  bool success;
   // Remove page from pagedir
   pagedir_clear_page (page->owning_thread->pagedir, page->vaddr);
 
   // Get dirty status
   bool is_dirty = pagedir_is_dirty (page->owning_thread->pagedir, page->vaddr);
 
-  if (!is_dirty)
+  // Clean page and exists in file, no need to swap
+  if (!is_dirty && page->file != NULL)
     {
-      success = true;
-    }
-
-  if (page->file == NULL || is_dirty)
-    {
-      success = swap_page_out (page);
-    }
-
-  if (success)
-    {
+      page->location = LOC_FILE_SYS;
+      page->frame->page = NULL;
       page->frame = NULL;
+      // printf("clean page and file exists, so evicting\n");
+      return true;
     }
+
+  // Swap out page
+  bool success = swap_page_out (page);
+
+  if(success)
+    page->location = LOC_SWAP;
+  else 
+    page->location = LOC_FILE_SYS;
+
+  page->frame->page = NULL;
+  page->frame = NULL;
+
 
   return success;
 }

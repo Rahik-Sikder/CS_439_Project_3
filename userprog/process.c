@@ -113,7 +113,7 @@ int process_wait (tid_t child_tid UNUSED)
        e != list_end (&cur_thread->children); e = list_next (e))
     {
       struct thread *f = list_entry (e, struct thread, childelem);
-      if (f->tid == child_tid)
+      if (f->tid == child_tid || child_tid == 0)
         {
           child_thread = f;
           break;
@@ -137,11 +137,13 @@ int process_wait (tid_t child_tid UNUSED)
   return child_thread->exit_status;
 }
 
+
 /* Free the current process's resources. */
 void process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
 
   if (thread_current ()->executable_file)
     {
@@ -495,6 +497,7 @@ static bool setup_stack (void **esp, char *filename, char *args)
   if(new_page == NULL){
     return false;
   }
+  new_page->dirty = true;
   struct frame *allocated_frame = try_alloc_frame (new_page);
   if (allocated_frame != NULL)
     {

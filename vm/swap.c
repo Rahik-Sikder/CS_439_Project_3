@@ -46,6 +46,8 @@ bool swap_page_in (struct sup_page_table_entry *page)
 bool swap_page_out (struct sup_page_table_entry *page)
 {
 
+  ASSERT (page->location == LOC_MEMORY);
+
   lock_acquire (&swap_lock);
   size_t swap_index = bitmap_scan_and_flip (swap_bitmap, 0, 1, false);
   lock_release (&swap_lock);
