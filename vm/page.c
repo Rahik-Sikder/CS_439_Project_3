@@ -12,6 +12,7 @@
 #include "vm/page.h"
 #include <string.h>
 #include "userprog/pagedir.h"
+#include "vm/swap.h"
 // Milan start driving
 
 /* Shifts out PGBITS offset abd returns the address*/
@@ -91,11 +92,12 @@ static struct sup_page_table_entry *get_entry_addr (void *vaddr,
   if (elem = hash_find (&thread_current ()->page_table, &page.hash_elem))
     return hash_entry (elem, struct sup_page_table_entry, hash_elem);
   // Rahik end driving
+  
   // Rahik start driving  
   // Milan start driving
-
-  // If vaddr is within max stack growth and a 32 bytes from esp, allocate
-  if ((uint8_t *) vaddr > (user_esp - 32))
+  // Jake start driving
+  // If vaddr is within max stack growth and a 64 bytes from esp, allocate
+  if ((uint8_t *) vaddr >= (user_esp - 64))
     {
       struct sup_page_table_entry *new_page =
           sup_page_table_insert (page.vaddr, true);
@@ -105,6 +107,7 @@ static struct sup_page_table_entry *get_entry_addr (void *vaddr,
 
       return new_page;
     }
+  // Jake end driving
   // Milan end driving
   // Rahik end driving
 
@@ -120,6 +123,7 @@ static bool populate_frame (struct sup_page_table_entry *page)
 
   // Milan start driving
   // Swapping...
+
   if(page->swap_index!=-1){
     swap_page_in(page);
   }
