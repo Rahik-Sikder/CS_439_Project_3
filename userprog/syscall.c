@@ -228,37 +228,36 @@ void syscall_handler (struct intr_frame *f)
         fd = *(sp++);
         buffer = (char *) *(sp++);
         size = (unsigned) *(sp++);
-        // Rahik start driving
-        // Jake start driving
 
-        // Rahik start driving
-        if (!is_user_vaddr (buffer + size - 1) ||
-            (!validate_user_address (buffer) &&
-             !((uint8_t *) buffer >= (uint8_t *) f->esp - 64)))
-          return syscall_error (f);
-        // Rahik end driving
+        //  Jake start driving
+
+        if (buffer == NULL ||
+            (!is_user_vaddr (buffer) || !is_user_vaddr (buffer + size - 1)))
+          {
+            return syscall_error (f);
+          }
+
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
-            struct sup_page_table_entry *page = get_entry_addr (buffer + i, sp);
-            if ((!pagedir_get_page (thread_current ()->pagedir, buffer + i) ||
-                 page == NULL || !page->writeable) &&
-                !((uint8_t *) buffer >= (uint8_t *) f->esp - 64))
+            struct sup_page_table_entry *page =
+                get_entry_addr (buffer + i, f->esp);
+            if ((page == NULL || !page->writeable) &&
+                !((uint8_t *) buffer >= ((char *) f->esp - 64)))
               {
                 return syscall_error (f);
               }
           }
-        // Rahik end driving
-        // Jake end driving
+        //  Jake end driving
         if (fd == 0)
           {
             for (unsigned i = 0; i < size; i++)
-              {
-                buffer[i] = input_getc ();
-              }
+              buffer[i] = input_getc ();
+
             f->eax = size;
           }
         else
           {
+
             found_file = get_file_from_fd (fd);
 
             // Milan start driving
@@ -267,21 +266,29 @@ void syscall_handler (struct intr_frame *f)
 
             int total_read_bytes = 0;
             int page_left = 0;
-
-            while (size > 0)
+             // Jake start driving
+            int read_bytes = -1;
+            lock_acquire(&filesys_lock);
+            while ((int) size > 0 && read_bytes != 0)
               {
                 page_left = PGSIZE - pg_ofs (buffer + total_read_bytes);
+                // printf("page left: %d\n", page_left);
                 // access to induce a page fault
-                if(!validate_user_address(buffer + total_read_bytes) && 
-                  !handle_load(buffer + total_read_bytes, f->esp, true)){
-                  syscall_error(f);
-                }
-                int read_bytes = file_read (found_file, buffer + total_read_bytes,
-                                         (size < page_left) ? size : page_left);
+                if (!validate_user_address (buffer + total_read_bytes) &&
+                    !handle_load (buffer + total_read_bytes, f->esp, true))
+                  {
+                    syscall_error (f);
+                  }
+                read_bytes =
+                    file_read (found_file, buffer + total_read_bytes,
+                               (size < page_left) ? size : page_left);
+
                 total_read_bytes += read_bytes;
                 size -= read_bytes;
+                // printf ("hello: %d, read: %d, total read: %d\n", size, read_bytes, total_read_bytes);
               }
-
+            lock_release(&filesys_lock);
+             // Jake end driving
 
             if (total_read_bytes < 0)
               return syscall_fail_return (f);
