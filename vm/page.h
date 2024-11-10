@@ -10,7 +10,7 @@ enum page_loc
 {
   LOC_FILE_SYS,
   LOC_SWAP,
-  LOC_PHYS,
+  LOC_MEMORY,
 };
 
 struct sup_page_table_entry
@@ -21,7 +21,7 @@ struct sup_page_table_entry
   bool swapped;              // Is the page swapped out?
   bool dirty;                // Is the page modified?
   enum page_loc location;    // page location
-  block_sector_t swap_index; // Index in the swap table if
+  size_t swap_index; // Index in the swap table if
   struct frame* frame;
   struct thread* owning_thread;
   struct hash_elem hash_elem; // Hash table element

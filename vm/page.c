@@ -118,8 +118,12 @@ static bool populate_frame (struct sup_page_table_entry *page)
   if (page->frame == NULL)
     return false;
 
+  // Milan start driving
   // Swapping...
-
+  if(page->swap_index!=-1){
+    swap_page_in(page);
+  }
+  // Milan end driving
   if (page->file != NULL)
     {
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
@@ -162,35 +166,45 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 // Jake end driving
   status = pagedir_set_page (thread_current ()->pagedir, page->vaddr,
                              page->frame->base_addr, page->writeable);
+  page->location = LOC_MEMORY;
   return status;
 }
 
 // Milan end driving
 // Jake start driving
 
-bool handle_out (struct sup_page_table_entry *page){
+bool handle_out (struct sup_page_table_entry *page)
+{
   // Rahik start driving
+  // Milan start driving
+  ASSERT(page->location == LOC_MEMORY);
+
   bool success;
   // Remove page from pagedir
-  pagedir_clear_page(page->owning_thread->pagedir);
+  pagedir_clear_page (page->owning_thread->pagedir, page->vaddr);
 
   // Get dirty status
-  bool is_dirty = pagedir_is_dirty(page->owning_thread->pagedir, page->vaddr);
+  bool is_dirty = pagedir_is_dirty (page->owning_thread->pagedir, page->vaddr);
 
-  if(!is_dirty){
-    success = true;
-  }
-  
-  if(page->file==NULL||is_dirty){
-    success = swap_out(page);
-  }
+  if (!is_dirty)
+    {
+      success = true;
+    }
 
-  if (success){
-    page->frame = NULL;
-    return success;
-  }
+  if (page->file == NULL || is_dirty)
+    {
+      success = swap_page_out (page);
+    }
+
+  if (success)
+    {
+      page->frame = NULL;
+      page->location = LOC_FILE_SYS;
+      return success;
+    }
 
   return success;
+  // Milan end driving
   // Rahik start driving
 }
 
