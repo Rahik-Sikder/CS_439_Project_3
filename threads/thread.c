@@ -284,18 +284,25 @@ struct thread *thread_current (void)
 /* Returns the running thread's tid. */
 tid_t thread_tid (void) { return thread_current ()->tid; }
 
-
 static void remove_page (struct hash_elem *e, void *aux)
 {
   struct sup_page_table_entry *cur =
       hash_entry (e, struct sup_page_table_entry, hash_elem);
   pagedir_clear_page (cur->owning_thread->pagedir, cur->vaddr);
-  if(cur->frame){
-    cur->frame->page = NULL;
-    cur->frame = NULL;
-    cur->location = LOC_FILE_SYS;
-    // printf("removing page from frame\n");
-  }
+  if (cur->frame)
+    {
+      cur->frame->page = NULL;
+      cur->frame = NULL;
+      cur->location = LOC_FILE_SYS;
+      // printf("removing page from frame\n");
+    }
+  else if (cur->location == LOC_SWAP)
+    {
+      if (cur->swap_index == -1)
+        printf ("HELLLPPPP MEEEEE\n");
+      else
+        free_swap_page (cur->swap_index);
+    }
 }
 
 /* Deschedules the current thread and destroys it.  Never
@@ -307,12 +314,12 @@ void thread_exit (void)
   struct thread *cur_thread = thread_current ();
   printf ("%s: exit(%d)\n", cur_thread->name, cur_thread->exit_status);
 
-   // printf("here!\n");
-  hash_apply(&cur_thread->page_table, &remove_page);
-
   // free parent if waiting on child
   // printf ("thread %d freeing parent\n", cur_thread->tid);
   sema_up (&cur_thread->sema_wait);
+
+  // printf("here!\n");
+  hash_apply (&cur_thread->page_table, &remove_page);
 
   // cure all child zombies
   struct list_elem *e;
@@ -328,8 +335,6 @@ void thread_exit (void)
   // become zombie
   // printf ("thread %d becoming zombie\n", cur_thread->tid);
   sema_down (&cur_thread->sema_cure);
-
- 
 
 #ifdef USERPROG
   process_exit ();

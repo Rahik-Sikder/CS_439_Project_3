@@ -25,18 +25,26 @@ void swap_init (void)
   lock_init (&swap_lock);
 }
 
+void free_swap_page (size_t swap_index)
+{
+  lock_acquire (&swap_lock);
+  bitmap_reset (swap_bitmap, swap_index);
+  lock_release (&swap_lock);
+}
+
 bool swap_page_in (struct sup_page_table_entry *page)
 {
   ASSERT (page->location == LOC_SWAP);
-
+  lock_acquire (&swap_lock);
   for (int i = 0; i < (PGSIZE / BLOCK_SECTOR_SIZE); i++)
     {
       block_read (swap_devices,
                   page->swap_index * (PGSIZE / BLOCK_SECTOR_SIZE) + i,
                   (char *) page->frame->base_addr + i * BLOCK_SECTOR_SIZE);
     }
-
-  bitmap_reset (swap_bitmap, page->swap_index);
+  lock_release (&swap_lock);
+  
+  free_swap_page (page->swap_index);
   page->swap_index = -1;
   page->location = LOC_MEMORY;
 
@@ -60,12 +68,15 @@ bool swap_page_out (struct sup_page_table_entry *page)
 
   page->swap_index = swap_index;
 
+  lock_acquire (&swap_lock);
   for (int i = 0; i < (PGSIZE / BLOCK_SECTOR_SIZE); i++)
     {
       block_write (swap_devices,
                    page->swap_index * (PGSIZE / BLOCK_SECTOR_SIZE) + i,
                    (char *) page->frame->base_addr + i * BLOCK_SECTOR_SIZE);
     }
+  lock_release (&swap_lock);
+
   page->location = LOC_SWAP;
   page->file_bytes = 0;
   page->file = NULL;

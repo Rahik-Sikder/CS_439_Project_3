@@ -244,9 +244,11 @@ void syscall_handler (struct intr_frame *f)
                 get_entry_addr (buffer + i, f->esp);
             if ((page == NULL || !page->writeable) &&
                 !((uint8_t *) buffer >= ((char *) f->esp - 64)))
-              {
-                return syscall_error (f);
-              }
+              return syscall_error (f);
+
+            if (page->frame == NULL && populate_frame (page))
+              page->frame->pinned = true;
+              // lock_acquire (&page->frame->frame_lock);
           }
         if (fd == 0)
           {
@@ -286,6 +288,11 @@ void syscall_handler (struct intr_frame *f)
               }
             lock_release (&filesys_lock);
 
+            for (unsigned i = 0; i < size; i += PGSIZE)
+              get_entry_addr (buffer + i, f->esp)->frame->pinned = false;
+              // lock_release (
+              //     &get_entry_addr (buffer + i, f->esp)->frame->frame_lock);
+
             if (total_read_bytes < 0)
               return syscall_fail_return (f);
 
@@ -303,10 +310,14 @@ void syscall_handler (struct intr_frame *f)
 
         for (unsigned i = 0; i < size; i += PGSIZE)
           {
-            if (!pagedir_get_page (thread_current ()->pagedir, buffer + i))
-              {
-                return syscall_error (f);
-              }
+            struct sup_page_table_entry *page =
+                get_entry_addr (buffer + i, f->esp);
+            if ((page == NULL || !page->writeable) &&
+                !((uint8_t *) buffer >= ((char *) f->esp - 64)))
+              return syscall_error (f);
+
+            // if (page->frame == NULL && populate_frame (page))
+            //   lock_acquire (&page->frame->frame_lock);
           }
         if (fd == 1)
           {
@@ -322,14 +333,43 @@ void syscall_handler (struct intr_frame *f)
             if (file == NULL)
               return syscall_fail_return (f);
 
-            int bytes_written = file_write (file, buffer, size);
+            // int bytes_written = file_write (file, buffer, size);
 
-            if (bytes_written < 0)
+            int total_bytes_written = 0;
+            int page_left = 0;
+            int write_bytes = -1;
+            lock_acquire (&filesys_lock);
+            while ((int) size > 0 && write_bytes != 0)
+              {
+                page_left = PGSIZE - pg_ofs (buffer + total_bytes_written);
+                // printf("page left: %d\n", page_left);
+                // access to induce a page fault
+                if (!validate_user_address (buffer + total_bytes_written) &&
+                    !handle_load (buffer + total_bytes_written, f->esp, true))
+                  {
+                    syscall_error (f);
+                  }
+                write_bytes =
+                    file_write (file, buffer + total_bytes_written,
+                                (size < page_left) ? size : page_left);
+
+                total_bytes_written += write_bytes;
+                size -= write_bytes;
+                // printf ("hello: %d, read: %d, total read: %d\n", size,
+                // read_bytes, total_read_bytes);
+              }
+            lock_release (&filesys_lock);
+
+            for (unsigned i = 0; i < size; i += PGSIZE)
+              // lock_release (
+              //     &get_entry_addr (buffer + i, f->esp)->frame->frame_lock);
+
+            if (total_bytes_written < 0)
               {
                 return syscall_fail_return (f);
               }
 
-            f->eax = bytes_written;
+            f->eax = total_bytes_written;
           }
         break;
 

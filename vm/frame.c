@@ -31,9 +31,12 @@ void frame_init (void)
       struct frame *f = &all_frames[frame_cnt++];
       lock_init (&f->frame_lock);
       f->base_addr = base;
+      f->pinned = false;
       f->page = NULL;
     }
 }
+
+
 
 struct frame *try_alloc_frame (struct sup_page_table_entry *page)
 {
@@ -65,7 +68,7 @@ struct frame *try_alloc_frame (struct sup_page_table_entry *page)
 
       // Check if frame is in use
       if (lock_held_by_current_thread (&cur_frame->frame_lock) ||
-          !lock_try_acquire (&cur_frame->frame_lock))
+          !lock_try_acquire (&cur_frame->frame_lock) || cur_frame->pinned)
         continue;
 
       // Check reference bit

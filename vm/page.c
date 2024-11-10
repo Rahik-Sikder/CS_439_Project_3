@@ -70,6 +70,7 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
 
 struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
 {
+
   // Check if page fault is in user space
   if (vaddr >= PHYS_BASE)
     return NULL;
@@ -104,6 +105,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
 
 bool populate_frame (struct sup_page_table_entry *page)
 {
+
   page->frame = try_alloc_frame (page);
   if (page->frame == NULL)
     {
@@ -118,6 +120,8 @@ bool populate_frame (struct sup_page_table_entry *page)
     }
   else if (page->location == LOC_FILE_SYS && page->file != NULL)
     {
+      // printf("Here!\n");
+
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
                                        page->file_bytes, page->file_offset);
       off_t zero_bytes = PGSIZE - read_bytes;
@@ -133,13 +137,14 @@ bool populate_frame (struct sup_page_table_entry *page)
 
 bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 {
+  // printf ("in handle load\n");
   struct sup_page_table_entry *page;
   bool status;
   if (fault_addr == NULL)
     {
       return false;
     }
-
+  // printf ("in now here in load\n");
   page = get_entry_addr (fault_addr, user_esp);
   if (page == NULL)
     {
@@ -188,14 +193,13 @@ bool handle_out (struct sup_page_table_entry *page)
   // Swap out page
   bool success = swap_page_out (page);
 
-  if(success)
+  if (success)
     page->location = LOC_SWAP;
-  else 
+  else
     page->location = LOC_FILE_SYS;
 
   page->frame->page = NULL;
   page->frame = NULL;
-
 
   return success;
 }
