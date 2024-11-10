@@ -322,14 +322,37 @@ void syscall_handler (struct intr_frame *f)
             if (file == NULL)
               return syscall_fail_return (f);
 
-            int bytes_written = file_write (file, buffer, size);
+            int total_bytes_written = 0;
+            int page_left = 0;
+            int write_bytes = -1;
+            lock_acquire (&filesys_lock);
+            while ((int) size > 0 && write_bytes != 0)
+              {
+                page_left = PGSIZE - pg_ofs (buffer + total_bytes_written);
+                // printf("page left: %d\n", page_left);
+                // access to induce a page fault
+                if (!validate_user_address (buffer + total_bytes_written) &&
+                    !handle_load (buffer + total_bytes_written, f->esp, true))
+                  {
+                    syscall_error (f);
+                  }
+                write_bytes =
+                    file_write (file, buffer + total_bytes_written,
+                                (size < page_left) ? size : page_left);
 
-            if (bytes_written < 0)
+                total_bytes_written += write_bytes;
+                size -= write_bytes;
+                // printf ("hello: %d, read: %d, total read: %d\n", size,
+                // read_bytes, total_read_bytes);
+              }
+            lock_release (&filesys_lock);
+
+            if (total_bytes_written < 0)
               {
                 return syscall_fail_return (f);
               }
 
-            f->eax = bytes_written;
+            f->eax = total_bytes_written;
           }
         break;
 
