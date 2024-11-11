@@ -15,6 +15,7 @@
 #include "userprog/process.h"
 #endif
 #include "vm/page.h"
+#include "vm/frame.h"
 #include "lib/kernel/hash.h"
 
 /* Random value for struct thread's `magic' member.
@@ -184,6 +185,7 @@ tid_t thread_create (const char *name, int priority, thread_func *function,
     return TID_ERROR;
 
   /* Initialize thread. */
+  // printf("Starting new thread with name: %s\n", name);
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
@@ -282,6 +284,21 @@ struct thread *thread_current (void)
 /* Returns the running thread's tid. */
 tid_t thread_tid (void) { return thread_current ()->tid; }
 
+// Rahik start driving
+static void remove_page (struct hash_elem *e, void *aux)
+{
+  struct sup_page_table_entry *cur =
+      hash_entry (e, struct sup_page_table_entry, hash_elem);
+  pagedir_clear_page (cur->owning_thread->pagedir, cur->vaddr);
+  if(cur->frame){
+    cur->frame->page = NULL;
+    cur->frame = NULL;
+    cur->location = LOC_FILE_SYS;
+    // printf("removing page from frame\n");
+  }
+}
+
+
 /* Deschedules the current thread and destroys it.  Never
    returns to the caller. */
 void thread_exit (void)
@@ -291,13 +308,12 @@ void thread_exit (void)
   struct thread *cur_thread = thread_current ();
   printf ("%s: exit(%d)\n", cur_thread->name, cur_thread->exit_status);
 
+   // printf("here!\n");
+  hash_apply(&cur_thread->page_table, &remove_page);
+
   // free parent if waiting on child
   // printf ("thread %d freeing parent\n", cur_thread->tid);
   sema_up (&cur_thread->sema_wait);
-
-  // become zombie
-  // printf ("thread %d becoming zombie\n", cur_thread->tid);
-  sema_down (&cur_thread->sema_cure);
 
   // cure all child zombies
   struct list_elem *e;
@@ -306,8 +322,16 @@ void thread_exit (void)
        e != list_end (&cur_thread->children); e = list_next (e))
     {
       struct thread *f = list_entry (e, struct thread, childelem);
+      // printf("Curing a zombie!\n");
       sema_up (&f->sema_cure);
     }
+
+  // become zombie
+  // printf ("thread %d becoming zombie\n", cur_thread->tid);
+  sema_down (&cur_thread->sema_cure);
+
+// Rahik end driving
+ 
 
 #ifdef USERPROG
   process_exit ();

@@ -8,6 +8,7 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 static void syscall_handler (struct intr_frame *);
 bool validate_user_address (const void *addr);
@@ -190,6 +191,9 @@ void syscall_handler (struct intr_frame *f)
         if (strlen (file) == 0)
           return syscall_fail_return (f);
 
+        // printf ("SYSOPEN called by %s to open file %s\n",
+        //         thread_current ()->name, file);
+        // printf ("Current page table: %p\n", thread_current ()->page_table);
         lock_acquire (&filesys_lock);
         struct file *opened_file = filesys_open (file);
         lock_release (&filesys_lock);
@@ -268,7 +272,9 @@ void syscall_handler (struct intr_frame *f)
             int page_left = 0;
              // Jake start driving
             int read_bytes = -1;
-            lock_acquire(&filesys_lock);
+            // Rahik start driving
+
+            lock_acquire (&filesys_lock);
             while ((int) size > 0 && read_bytes != 0)
               {
                 page_left = PGSIZE - pg_ofs (buffer + total_read_bytes);
@@ -279,22 +285,21 @@ void syscall_handler (struct intr_frame *f)
                   {
                     syscall_error (f);
                   }
-                read_bytes =
-                    file_read (found_file, buffer + total_read_bytes,
-                               (size < page_left) ? size : page_left);
+                read_bytes = file_read (found_file, buffer + total_read_bytes,
+                                        (size < page_left) ? size : page_left);
 
                 total_read_bytes += read_bytes;
                 size -= read_bytes;
-                // printf ("hello: %d, read: %d, total read: %d\n", size, read_bytes, total_read_bytes);
+                // printf ("hello: %d, read: %d, total read: %d\n", size,
+                // read_bytes, total_read_bytes);
               }
-            lock_release(&filesys_lock);
-             // Jake end driving
+            lock_release (&filesys_lock);
+            // Rahik end driving
 
             if (total_read_bytes < 0)
               return syscall_fail_return (f);
 
             f->eax = total_read_bytes;
-            // Milan end driving
           }
         break;
 

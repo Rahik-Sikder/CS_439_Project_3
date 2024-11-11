@@ -20,7 +20,7 @@ unsigned int page_hash_func (const struct hash_elem *e, void *aux)
 {
   struct sup_page_table_entry *page_entry =
       hash_entry (e, struct sup_page_table_entry, hash_elem);
-  return ((uint16_t) page_entry->vaddr) >> PGBITS;
+  return ((uintptr_t) page_entry->vaddr) >> PGBITS;
 }
 
 /* Compares the value of two hash elements A and B, given
@@ -45,34 +45,36 @@ struct sup_page_table_entry *sup_page_table_insert (void *vaddr, bool writeable)
   struct sup_page_table_entry *new_page =
       malloc (sizeof (struct sup_page_table_entry));
 
-  new_page->vaddr = pg_round_down (vaddr);
+  // Rahik start driving
 
-  new_page->frame = NULL;
-
-  new_page->writeable = writeable;
-
-  new_page->swap_index = (block_sector_t) -1;
-
-  new_page->owning_thread = cur;
-
-  new_page->file = NULL;
-  new_page->file_offset = 0;
-  new_page->file_bytes = 0;
-  // Rahik end driving
-
-  // Jake start driving
-  if (hash_insert (&cur->page_table, &new_page->hash_elem))
+  if (new_page != NULL)
     {
-      free (new_page);
-      return NULL;
+      new_page->vaddr = (void *) pg_round_down (vaddr);
+
+      new_page->frame = NULL;
+
+      new_page->writeable = writeable;
+
+      new_page->swap_index = (block_sector_t) -1;
+
+      new_page->owning_thread = cur;
+
+      new_page->file = NULL;
+      new_page->file_offset = 0;
+      new_page->file_bytes = 0;
+
+      if (hash_insert (&cur->page_table, &new_page->hash_elem))
+        {
+          free (new_page);
+          return NULL;
+        }
     }
-  // Jake end driving
+
+  // Rahik end driving
 
   return new_page;
 }
 
-// Jake end driving
-// Milan start driving
 struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
 {
   // Check if page fault is in user space
@@ -87,12 +89,16 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
   // Page exists
   // Rahik start driving
   if ((elem = hash_find (&thread_current ()->page_table, &page.hash_elem)))
-    return hash_entry (elem, struct sup_page_table_entry, hash_elem);
-  // Rahik end driving
+    {
+      return hash_entry (elem, struct sup_page_table_entry, hash_elem);
+    }
+
+    // Rahik end driving
   
   // Rahik start driving  
   // Milan start driving
   // Jake start driving
+
   // If vaddr is within max stack growth and a 64 bytes from esp, allocate
   if ((uint8_t *) vaddr >= (user_esp - 64))
     {
@@ -102,6 +108,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
       if (found_frame == NULL)
         return NULL;
 
+      new_page->dirty = true;
       return new_page;
     }
   // Jake end driving
@@ -112,7 +119,7 @@ struct sup_page_table_entry *get_entry_addr (void *vaddr, uint8_t *user_esp)
   return NULL;
 }
 
-static bool populate_frame (struct sup_page_table_entry *page)
+bool populate_frame (struct sup_page_table_entry *page)
 {
   page->frame = try_alloc_frame (page);
   if (page->frame == NULL)
@@ -120,14 +127,13 @@ static bool populate_frame (struct sup_page_table_entry *page)
 
   // Milan start driving
   // Swapping...
-
   // Rahik start driving
-  if (page->swap_index != (size_t) -1)
+  if (page->location == LOC_SWAP)
     {
       swap_page_in (page);
       // Milan end driving
     }
-  else if (page->file != NULL)
+  else if (page->location == LOC_FILE_SYS && page->file != NULL)
     {
   // Rahik end driving
       off_t read_bytes = file_read_at (page->file, page->frame->base_addr,
@@ -141,7 +147,7 @@ static bool populate_frame (struct sup_page_table_entry *page)
     {
       memset (page->frame->base_addr, 0, PGSIZE);
     }
-
+  lock_release (&page->frame->frame_lock);
   return true;
 }
 
@@ -172,6 +178,7 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
                              page->frame->base_addr, page->writeable);
 
   page->location = LOC_MEMORY;
+
   return status;
 }
 
@@ -181,34 +188,28 @@ bool handle_load (void *fault_addr, uint8_t *user_esp, bool write)
 bool handle_out (struct sup_page_table_entry *page)
 {
 
-  // Rahik start driving
-  // Milan start driving
-  ASSERT (page->location == LOC_MEMORY);
+  // printf("page location: %d", page->location);
+  ASSERT (page->frame != NULL);
 
-  bool success;
   // Remove page from pagedir
   pagedir_clear_page (page->owning_thread->pagedir, page->vaddr);
 
   // Get dirty status
   bool is_dirty = pagedir_is_dirty (page->owning_thread->pagedir, page->vaddr);
 
-  if (!is_dirty)
-    {
-      success = true;
-    }
+  // Rahik start driving
 
-  if (page->file == NULL || is_dirty)
-    {
-      success = swap_page_out (page);
-    }
+  // Swap out page
+  bool success = swap_page_out (page);
 
   if (success)
-    {
-      page->frame = NULL;
-      page->location = LOC_FILE_SYS;
-      return success;
-    }
+    page->location = LOC_SWAP;
+  else
+    page->location = LOC_FILE_SYS;
 
+  page->frame->page = NULL;
+  page->frame = NULL;
+  // Rahik end driving
   return success;
   // Milan end driving
   // Rahik start driving

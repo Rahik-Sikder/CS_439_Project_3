@@ -113,7 +113,7 @@ int process_wait (tid_t child_tid UNUSED)
        e != list_end (&cur_thread->children); e = list_next (e))
     {
       struct thread *f = list_entry (e, struct thread, childelem);
-      if (f->tid == child_tid)
+      if (f->tid == child_tid || child_tid == 0)
         {
           child_thread = f;
           break;
@@ -136,6 +136,7 @@ int process_wait (tid_t child_tid UNUSED)
 
   return child_thread->exit_status;
 }
+
 
 /* Free the current process's resources. */
 void process_exit (void)
@@ -474,25 +475,26 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Get a page of memory. */
       // Jake start driving
       struct sup_page_table_entry *new_page =  sup_page_table_insert(upage, writable);
+      
       // Rahik start driving
-      // Milan start driving
-      new_page->file = file;      
-      new_page->file_bytes = page_read_bytes;
-      new_page->file_offset = ofs;
-      // Milan end driving
-      // Rahik end driving
-
+      
       if(new_page==NULL){
-        return NULL;
+        return false;
       }
-      // Jake end driving
-      // Jake start driving
+      
+      if(page_read_bytes>0){
+        new_page->file = file;
+        new_page->file_bytes = page_read_bytes;
+        new_page->file_offset = ofs;
+      }
+
+      // Rahik end driving
+      
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
       ofs += PGSIZE;
-      // Jake end driving
     }
   return true;
 }
@@ -508,6 +510,7 @@ static bool setup_stack (void **esp, char *filename, char *args)
   if(new_page == NULL){
     return false;
   }
+  new_page->dirty = true;
   struct frame *allocated_frame = try_alloc_frame (new_page);
   if (allocated_frame != NULL)
     {
@@ -516,6 +519,7 @@ static bool setup_stack (void **esp, char *filename, char *args)
       if (success){
         new_page->frame = allocated_frame;
         *esp = PHYS_BASE;
+        new_page->location = LOC_MEMORY;
       }
       else
         palloc_free_page (kpage);
@@ -524,7 +528,6 @@ static bool setup_stack (void **esp, char *filename, char *args)
   char *rest;
 
   char *sp = *esp;
-  // printf("new SP: \t%p\n", sp);
   uint32_t num_args = 0;
   char *argv[128];
 
@@ -569,6 +572,9 @@ static bool setup_stack (void **esp, char *filename, char *args)
   // ASSERT ((uint32_t) sp <= (uint32_t) PHYS_BASE -  (uint32_t) PGSIZE);
 
   *esp = sp;
+
+  lock_release(&allocated_frame->frame_lock);
+
   return success;
 }
 
